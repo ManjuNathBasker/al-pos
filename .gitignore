@@ -1,0 +1,103 @@
+# =========================
+# Laravel
+# =========================
+
+/vendor
+/node_modules
+/public/build
+/public/hot
+/public/storage
+
+/storage/*.key
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/pail
+
+/bootstrap/cache/*.php
+
+# =========================
+# Environment Files
+# =========================
+
+.env
+.env.*
+!.env.example
+
+/auth.json
+
+# =========================
+# IDE & Editor Files
+# =========================
+
+.idea/
+/.vscode/
+/.zed/
+/.nova/
+/.cursor/
+/.codex/
+
+.phpactor.json
+_ide_helper.php
+
+# =========================
+# PHPUnit / Testing
+# =========================
+
+.phpunit.result.cache
+.phpunit.cache/
+coverage/
+
+# =========================
+# Composer
+# =========================
+
+composer.phar
+
+# =========================
+# Logs
+# =========================
+
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# OS Files
+# =========================
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Temp Files
+# =========================
+
+*.swp
+*.swo
+*~
+
+# =========================
+# Laravel Sail / Homestead
+# =========================
+
+Homestead.json
+Homestead.yaml
+
+# =========================
+# Database
+# =========================
+
+/database/database.sqlite
+
+# =========================
+# Misc
+# =========================
+
+*.bak
+*.tmp
