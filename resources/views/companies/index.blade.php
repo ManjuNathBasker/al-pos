@@ -37,9 +37,12 @@
                             </div>
                             <div class="ml-4">
                                 <div class="font-medium text-slate-900">{{ $company->name }}</div>
-                                @if(session('company_id') == $company->id)
-                                <span class="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Active Session</span>
-                                @endif
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="inline-flex items-center rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-inset ring-slate-600/10 uppercase tracking-tighter">{{ str_replace('_', ' ', $company->business_type) }}</span>
+                                    @if(session('company_id') == $company->id)
+                                    <span class="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Active Session</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </td>
@@ -60,6 +63,7 @@
                                 <button type="submit" class="text-indigo-600 hover:text-indigo-900 bg-transparent border-0 p-0 cursor-pointer">Switch</button>
                             </form>
                             @endif
+                            <a href="{{ route('companies.modules', $company) }}" class="text-indigo-600 hover:text-indigo-900 font-medium">Modules</a>
                             <a href="{{ route('companies.edit', $company) }}" class="text-slate-600 hover:text-slate-900">Edit</a>
                             <form action="{{ route('companies.destroy', $company) }}" method="POST" class="inline-block" onsubmit="return confirm('Are you sure? This will delete the company and its data.');">
                                 @csrf

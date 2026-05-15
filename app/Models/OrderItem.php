@@ -20,6 +20,8 @@ class OrderItem extends Model
         'discount_amount',
         'tax_amount',
         'subtotal',
+        'kitchen_status',
+        'item_note',
         'company_id',
     ];
 

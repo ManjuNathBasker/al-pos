@@ -347,6 +347,70 @@
     </div>
 
     {{-- ===================================================================
+     TABLE SELECTION MODAL
+=================================================================== --}}
+    <div
+        x-show="showTablesModal"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm"
+        @click.self="showTablesModal = false"
+        x-cloak>
+        <div
+            x-show="showTablesModal"
+            x-transition:enter="transition ease-out duration-250"
+            x-transition:enter-start="opacity-0 scale-90"
+            x-transition:enter-end="opacity-100 scale-100"
+            class="bg-white rounded-[2.5rem] p-8 shadow-2xl max-w-4xl w-full mx-4 overflow-hidden border border-slate-100">
+            
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800">Dine-in Tables</h2>
+                    <p class="text-sm text-slate-400">Select an occupied table to process payment</p>
+                </div>
+                <button @click="showTablesModal = false" class="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto max-h-[60vh] p-1">
+                <template x-for="table in activeTablesList" :key="table.id">
+                    <button 
+                        @click="loadTableOrder(table)"
+                        class="relative group p-5 bg-white border-2 border-slate-100 rounded-3xl text-left hover:border-brand-500 hover:shadow-xl transition-all active:scale-[0.98]">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-600 px-2 py-1 rounded-lg">Occupied</span>
+                        </div>
+                        <h3 class="font-bold text-slate-800" x-text="table.name"></h3>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest" x-text="table.section.name"></p>
+                        
+                        <div class="mt-4 pt-4 border-t border-slate-50">
+                            <p class="text-xs font-bold text-slate-400 mb-1 uppercase tracking-tight">Active Order</p>
+                            <p class="text-sm font-black text-brand-600 price-tag" x-text="'₹' + parseFloat(table.active_order.total_amount).toFixed(2)"></p>
+                        </div>
+                    </button>
+                </template>
+                
+                <template x-if="activeTablesList.length === 0">
+                    <div class="col-span-full py-12 text-center">
+                        <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-10 h-10 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        </div>
+                        <p class="text-slate-400 font-bold uppercase tracking-widest text-xs">No occupied tables</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    {{-- ===================================================================
      CHANGE #3: BILL DISPLAY MODAL (shown after order completion)
 =================================================================== --}}
     <div
@@ -516,13 +580,56 @@
                 </div>
             </div>
 
-            {{-- Category Label --}}
-            <div class="px-5 pt-4 pb-2">
-                <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Categories</p>
-            </div>
-
             {{-- Category List --}}
             <nav class="flex-1 overflow-y-auto styled-scroll px-3 pb-4 space-y-0.5">
+                {{-- Service Type Switcher --}}
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button @click="serviceType = 'retail'; loadedOrderId = null; loadedTableName = ''" 
+                            :class="serviceType === 'retail' ? 'bg-indigo-600 text-white shadow-indigo-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            class="flex flex-col items-center justify-center p-3 rounded-2xl transition-all border border-transparent shadow-sm">
+                        <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                        <span class="text-[10px] font-black uppercase tracking-tighter">Counter</span>
+                    </button>
+                    
+                    @php $activeCompany = \App\Models\Company::find(session('company_id')); @endphp
+                    @if($activeCompany && $activeCompany->isModuleEnabled('restaurant_mode'))
+                    <button @click="serviceType = 'dine_in'; fetchActiveTables();" 
+                            :class="serviceType === 'dine_in' ? 'bg-emerald-600 text-white shadow-emerald-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            class="flex flex-col items-center justify-center p-3 rounded-2xl transition-all border border-transparent shadow-sm">
+                        <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        <span class="text-[10px] font-black uppercase tracking-tighter">Dine-in</span>
+                    </button>
+
+                    <button @click="serviceType = 'takeaway'; loadedOrderId = null; loadedTableName = ''" 
+                            :class="serviceType === 'takeaway' ? 'bg-amber-500 text-white shadow-amber-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            class="flex flex-col items-center justify-center p-3 rounded-2xl transition-all border border-transparent shadow-sm">
+                        <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                        <span class="text-[10px] font-black uppercase tracking-tighter">Takeaway</span>
+                    </button>
+
+                    <button @click="serviceType = 'delivery'; loadedOrderId = null; loadedTableName = ''" 
+                            :class="serviceType === 'delivery' ? 'bg-rose-500 text-white shadow-rose-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            class="flex flex-col items-center justify-center p-3 rounded-2xl transition-all border border-transparent shadow-sm">
+                        <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                        <span class="text-[10px] font-black uppercase tracking-tighter">Delivery</span>
+                    </button>
+                    @endif
+                </div>
+
+                <template x-if="serviceType === 'dine_in'">
+                    <button @click="fetchActiveTables()" class="w-full flex items-center gap-3 px-3 py-3 mb-2 rounded-xl text-sm font-bold transition-all duration-200 text-left bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100">
+                         <span class="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        </span>
+                        <span class="flex-1" x-text="loadedTableName ? 'Table: ' + loadedTableName : 'Select Table'"></span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                </template>
+
+                {{-- Divider --}}
+                <div class="px-5 pt-2 pb-2">
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Categories</p>
+                </div>
 
                 {{-- All Products --}}
                 <button
@@ -688,7 +795,7 @@
                 </div>
 
                 <div class="flex items-center gap-4 text-xs text-slate-400 font-medium">
-                    <span>POS Terminal Active</span>
+                    <span x-text="serviceType.toUpperCase()"></span>
                 </div>
             </div>
 
@@ -783,10 +890,23 @@
         <aside class="w-[340px] flex-shrink-0 bg-white shadow-cart flex flex-col z-10 overflow-hidden">
 
             {{-- Cart Header --}}
-            <div class="px-6 py-5 border-b border-slate-100 flex-shrink-0">
-                <div class="flex items-baseline gap-3">
-                    <h2 class="text-lg font-bold text-slate-800">Order</h2>
-                    <p class="text-xs text-slate-400 font-mono">{{ date('Y-m-d H:i') }}</p>
+            <div class="px-6 py-5 border-b border-slate-100 flex-shrink-0 bg-white">
+                <div class="flex flex-col gap-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-baseline gap-2">
+                            <h2 class="text-lg font-bold text-slate-800">Order</h2>
+                            <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest">{{ date('Y-m-d H:i') }}</p>
+                        </div>
+                        <template x-if="loadedOrderId">
+                             <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-brand-100 text-brand-700 uppercase tracking-tighter" x-text="'Table: ' + loadedTableName"></span>
+                        </template>
+                    </div>
+                    <template x-if="loadedOrderId">
+                        <div class="flex items-center justify-between mt-1 pt-1 border-t border-slate-50">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Original Total</span>
+                            <span class="text-xs font-black text-slate-600" x-text="'$' + parseFloat(loadedOrderTotal).toFixed(2)"></span>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -982,40 +1102,46 @@
 
                     {{-- Right: Customer & Payment Form --}}
                     <div class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Search Customer by Phone</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </span>
-                                <input type="tel" x-model="customer.phone" @input.debounce.500ms="fetchCustomer" 
-                                       placeholder="+1 (555) 000-0000"
-                                       class="w-full pl-11 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 focus:bg-white outline-none text-slate-700 transition-all shadow-sm" />
+                        <!-- Customer Info Section -->
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Customer Name</label>
+                                    <input type="text" x-model="customer.name" placeholder="Walk-in Customer" class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-brand-400 outline-none text-sm font-bold transition-all" />
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Phone Number</label>
+                                    <div class="relative">
+                                        <input type="text" x-model="customer.phone" @input="fetchCustomer()" placeholder="9988776655" class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-brand-400 outline-none text-sm font-bold transition-all" />
+                                        <div class="absolute right-3 top-1/2 -translate-y-1/2" x-show="isCustomerLoading">
+                                            <svg class="animate-spin h-4 w-4 text-brand-500" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div x-show="serviceType === 'delivery' || customer.name">
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5" :class="serviceType === 'delivery' ? 'text-rose-500' : ''">
+                                    <span x-text="serviceType === 'delivery' ? 'Delivery Address (Required)' : 'Customer Address'"></span>
+                                </label>
+                                <textarea x-model="customer.address" rows="2" placeholder="Street, Building, Floor..." class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:bg-white focus:border-brand-400 outline-none text-sm font-bold transition-all"></textarea>
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Customer Name</label>
-                            <input type="text" x-model="customer.name" 
-                                   placeholder="John Doe"
-                                   class="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 focus:bg-white outline-none text-slate-700 transition-all shadow-sm" />
+                        {{-- Payment Methods Header & Split Toggle --}}
+                        <div class="border-t border-slate-100 pt-4 flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-slate-700">Payment Method</h3>
+                            <button @click="toggleSplit()" 
+                                    :class="isSplit ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-500'"
+                                    class="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all">
+                                <span x-text="isSplit ? 'Split Enabled' : 'Split Bill'"></span>
+                            </button>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Address (Optional)</label>
-                            <input type="text" x-model="customer.address" 
-                                   placeholder="123 Main St, City"
-                                   class="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 focus:bg-white outline-none text-slate-700 transition-all shadow-sm" />
-                        </div>
-
-                                                {{-- Payment Methods --}}
-                        <div class="border-t border-slate-100 pt-4">
-                            <h3 class="text-sm font-semibold text-slate-700 mb-3">Payment Method</h3>
-
+                        {{-- Payment Methods --}}
+                        <div class="space-y-4">
                             <!-- Wallet UI -->
-                            <div class="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                            <div x-show="!isSplit" class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
                                 <div>
                                     <p class="text-sm font-semibold text-slate-700">Wallet Balance</p>
                                     <p class="text-xs text-slate-500" x-text="'Available: $' + (customer.wallet_balance || 0).toFixed(2)"></p>
@@ -1026,7 +1152,7 @@
                                 </label>
                             </div>
 
-                            <div class="space-y-3">
+                            <div x-show="!isSplit" class="space-y-3">
                                 <div>
                                     <label class="block text-sm text-slate-600 mb-1">Cash</label>
                                     <div class="relative">
@@ -1051,6 +1177,30 @@
                                                class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
                                     </div>
                                 </div>
+                            </div>
+
+                            {{-- Split Payments List --}}
+                            <div x-show="isSplit" class="space-y-3">
+                                <template x-for="(p, index) in splitPayments" :key="index">
+                                    <div class="flex items-end gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                        <div class="flex-1 space-y-1">
+                                            <label class="text-[10px] font-black uppercase text-slate-400">Method</label>
+                                            <select x-model="p.method" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
+                                                <option value="cash">Cash</option>
+                                                <option value="card">Card</option>
+                                                <option value="upi">UPI</option>
+                                            </select>
+                                        </div>
+                                        <div class="flex-1 space-y-1">
+                                            <label class="text-[10px] font-black uppercase text-slate-400">Amount</label>
+                                            <input type="number" x-model="p.amount" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none font-mono" />
+                                        </div>
+                                        <button @click="removeSplit(index)" class="p-2 text-slate-300 hover:text-red-500">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                                <button @click="addSplit()" class="w-full py-2 border-2 border-dashed border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:border-brand-300 hover:text-brand-500 transition-all">+ Add Payment</button>
                             </div>
                         </div>
                     </div>
@@ -1117,6 +1267,14 @@ function posApp() {
         // CHANGE #6: Added new modal states
         showOrderCompleted: false,
         showBillModal: false,
+        showTablesModal: false,
+        activeTablesList: [],
+        loadedOrderId: null,
+        loadedTableName: '',
+        loadedOrderTotal: 0,
+        serviceType: 'retail', // retail (counter), dine_in, takeaway, delivery
+        isSplit: false,
+        splitPayments: [],
         
         customer: {
             name: '',
@@ -1127,6 +1285,9 @@ function posApp() {
         useWallet: false,
 
         get totalPaid() {
+            if (this.isSplit) {
+                return this.splitPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+            }
             let cash = parseFloat(this.payments.cash) || 0;
             let card = parseFloat(this.payments.card) || 0;
             let upi = parseFloat(this.payments.upi) || 0;
@@ -1189,6 +1350,7 @@ function posApp() {
         lastOrderDiscount: 0,
         lastOrderDiscountPercent: 0,
         lastOrderTax: 0,
+        discountPercent: 0,
         
         currentTime: '',
         toasts: [],
@@ -1343,23 +1505,64 @@ function posApp() {
             this.showToast('Cart cleared');
             this.syncToBackend('clear', {});
         },
-
-        syncToBackend(action, payload) {
-            const urls = {
-                add: '{{ route("pos.cart.add") }}',
-                update: '{{ route("pos.cart.update") }}',
-                remove: '{{ route("pos.cart.remove") }}',
-                clear: '{{ route("pos.cart.clear") }}',
-            };
-            fetch(urls[action], {
+        syncToBackend(action, data) {
+            fetch('/pos/cart/' + action, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(data)
             }).catch(() => {});
+        },
+
+        async fetchActiveTables() {
+            this.showTablesModal = true;
+            try {
+                const res = await fetch('{{ route("pos.active-tables") }}');
+                const data = await res.json();
+                if (data.success) {
+                    this.activeTablesList = data.tables;
+                }
+            } catch (e) {
+                this.showToast('Failed to fetch tables', 'error');
+            }
+        },
+
+        async loadTableOrder(table) {
+            const orderId = table.active_order.id;
+            try {
+                const res = await fetch('{{ route("pos.load-order") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ order_id: orderId }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.cart = data.cart;
+                    this.loadedOrderId = data.order.id;
+                    this.loadedTableName = table.name;
+                    this.loadedOrderTotal = data.order.total_amount;
+                    this.customer.name = data.order.customer ? data.order.customer.name : '';
+                    this.customer.phone = data.order.customer ? data.order.customer.phone : '';
+                    this.discountValue = data.order.discount_value || 0;
+                    this.discountType = data.order.discount_type || 'percent';
+                    this.orderNote = data.order.note || '';
+                    
+                    this.showTablesModal = false;
+                    this.showToast('Order loaded for ' + table.name);
+                    
+                    if (this.customer.phone) {
+                        this.fetchCustomer();
+                    }
+                }
+            } catch (e) {
+                this.showToast('Failed to load order', 'error');
+            }
         },
 
         checkout() {
@@ -1376,9 +1579,18 @@ function posApp() {
 
         // CHANGE #8: Updated confirmOrder function
         async confirmOrder() {
-            if (!this.customer.name || !this.customer.phone) {
-                this.showToast('Name and Phone are required', 'error');
-                return;
+            if (this.serviceType === 'delivery') {
+                if (!this.customer.name || !this.customer.phone || !this.customer.address) {
+                    this.showToast('Customer Name, Phone, and Address are required for Delivery', 'error');
+                    return;
+                }
+            } else {
+                // Non-delivery orders might still want name/phone for the bill, but let's keep it optional if preferred
+                // or keep the previous requirement if the user wants it.
+                if (!this.customer.name || !this.customer.phone) {
+                    this.showToast('Name and Phone are required', 'error');
+                    return;
+                }
             }
             
             this.isCheckingOut = true;
@@ -1387,7 +1599,7 @@ function posApp() {
             const snapshotItems = [...this.cartItems];
             const snapshotSubtotal = this.cartSubtotal;
             const snapshotDiscount = this.discountAmount;
-            const snapshotDiscountPercent = this.discountPercent;
+            const snapshotDiscountPercent = this.discountValue;
             const snapshotTax = this.taxAmount;
             const snapshotTotal = this.grandTotal;
             const snapshotCustomer = { name: this.customer.name, phone: this.customer.phone };
@@ -1401,6 +1613,7 @@ function posApp() {
                         'Accept': 'application/json',
                     },
                     body: JSON.stringify({
+                        service_type: this.serviceType,
                         discount_percent: this.discountValue,
                         discount_type: this.discountType,
                         subtotal: this.cartSubtotal,
@@ -1409,10 +1622,15 @@ function posApp() {
                         note: this.orderNote,
                         total: this.grandTotal,
                         cart: this.cart,
+                        order_id: this.loadedOrderId,
                         customer_name: this.customer.name,
                         customer_phone: this.customer.phone,
                         billing_address: this.customer.address,
-                        payment_details: this.payments, use_wallet: this.useWallet, wallet_amount: this.walletAmount
+                        payment_details: this.payments, 
+                        use_wallet: this.useWallet, 
+                        wallet_amount: this.walletAmount,
+                        is_split: this.isSplit,
+                        split_payments: this.splitPayments
                     }),
                 });
 
@@ -1445,11 +1663,15 @@ function posApp() {
             this.showBillingModal = false;
             this.cart = {};
             this.customer = { name: '', phone: '', address: '' };
-            this.payments = { cash: 0, card: 0, qr: 0 };
+            this.payments = { cash: 0, card: 0, upi: 0 };
             this.discountValue = 0;
             this.appliedCoupon = null;
             this.couponCode = '';
             this.orderNote = '';
+            this.loadedOrderId = null;
+            this.loadedTableName = '';
+            this.loadedOrderTotal = 0;
+            this.loadedTableName = '';
 
             // Sync cart clear to backend silently
             this.syncToBackend('clear', {});
@@ -1502,6 +1724,21 @@ function posApp() {
         startNewOrder() {
             this.showBillModal = false;
             this.showOrderCompleted = false;
+        },
+
+        toggleSplit() {
+            this.isSplit = !this.isSplit;
+            if (this.isSplit && this.splitPayments.length === 0) {
+                this.addSplit();
+            }
+        },
+
+        addSplit() {
+            this.splitPayments.push({ method: 'cash', amount: 0 });
+        },
+
+        removeSplit(index) {
+            this.splitPayments.splice(index, 1);
         },
 
         async applyCoupon() {

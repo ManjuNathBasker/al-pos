@@ -37,6 +37,10 @@ class Order extends Model
         'company_id',
         'created_by',
         'updated_by',
+        'table_id',
+        'service_type',
+        'kitchen_status',
+        'waiter_id',
     ];
 
     protected $casts = [
@@ -88,6 +92,26 @@ class Order extends Model
     public function coupon()
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    public function table()
+    {
+        return $this->belongsTo(RestaurantTable::class, 'table_id');
+    }
+
+    public function waiter()
+    {
+        return $this->belongsTo(User::class, 'waiter_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function kitchenTickets()
+    {
+        return $this->hasMany(KitchenTicket::class);
     }
 
     // ── Scopes ───────────────────────────────────────────────────────

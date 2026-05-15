@@ -41,6 +41,24 @@
                     <input type="text" name="phone" id="phone" value="{{ old('phone') }}" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
                     @error('phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
+
+                <!-- Business Type -->
+                <div class="md:col-span-2">
+                    <label for="business_type" class="block text-sm font-medium text-slate-700">Business Type</label>
+                    <select name="business_type" id="business_type" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 bg-white">
+                        <option value="retail" {{ old('business_type') == 'retail' ? 'selected' : '' }}>Retail Store</option>
+                        <option value="restaurant" {{ old('business_type') == 'restaurant' ? 'selected' : '' }}>Restaurant</option>
+                        <option value="cafe" {{ old('business_type') == 'cafe' ? 'selected' : '' }}>Cafe</option>
+                        <option value="bakery" {{ old('business_type') == 'bakery' ? 'selected' : '' }}>Bakery</option>
+                        <option value="food_court" {{ old('business_type') == 'food_court' ? 'selected' : '' }}>Food Court</option>
+                        <option value="supermarket" {{ old('business_type') == 'supermarket' ? 'selected' : '' }}>Supermarket</option>
+                        <option value="bookstall" {{ old('business_type') == 'bookstall' ? 'selected' : '' }}>Bookstall</option>
+                        <option value="boutique" {{ old('business_type') == 'boutique' ? 'selected' : '' }}>Boutique</option>
+                        <option value="pharmacy" {{ old('business_type') == 'pharmacy' ? 'selected' : '' }}>Pharmacy</option>
+                    </select>
+                    @error('business_type')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    <p class="mt-2 text-xs text-slate-500">The business type will automatically enable relevant modules (e.g., Table Management for Restaurants).</p>
+                </div>
             </div>
 
             <!-- Address -->

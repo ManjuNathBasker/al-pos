@@ -30,6 +30,7 @@ class RoleController extends Controller
             'POS' => ['access pos', 'create orders', 'process billing'],
             'Reports' => ['view reports'],
             'Settings' => ['manage settings'],
+            'Restaurant' => ['access table map', 'access kitchen kds', 'access waiter panel', 'manage table settings'],
         ];
         
         return view('roles.create', compact('permissionsByModule'));
@@ -77,6 +78,7 @@ class RoleController extends Controller
             'POS' => ['access pos', 'create orders', 'process billing'],
             'Reports' => ['view reports'],
             'Settings' => ['manage settings'],
+            'Restaurant' => ['access table map', 'access kitchen kds', 'access waiter panel', 'manage table settings'],
         ];
 
         $rolePermissions = $role->permissions->pluck('name')->toArray();

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\ModuleSetting;
+use App\Services\ModuleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +12,12 @@ use Spatie\Permission\PermissionRegistrar;
 
 class CompanyController extends Controller
 {
+    protected $moduleService;
+
+    public function __construct(ModuleService $moduleService)
+    {
+        $this->moduleService = $moduleService;
+    }
     /**
      * Switch the active company.
      */
@@ -67,6 +75,7 @@ class CompanyController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
+            'business_type' => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
         ]);
 
         $user = Auth::user();
@@ -90,6 +99,9 @@ class CompanyController extends Controller
             setPermissionsTeamId(session('company_id'));
         }
 
+        // Initialize default modules based on business type
+        $this->moduleService->initializeModules($company);
+
         return redirect()->route('companies.index')->with('success', 'Company created successfully.');
     }
 
@@ -109,6 +121,7 @@ class CompanyController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
+            'business_type' => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
         ]);
 
         $company->update($request->all());
@@ -123,5 +136,39 @@ class CompanyController extends Controller
         $company->delete();
 
         return redirect()->route('companies.index')->with('success', 'Company deleted successfully.');
+    }
+
+    /**
+     * Show module settings for a company.
+     */
+    public function modules(Company $company)
+    {
+        $this->authorize('update', $company);
+        
+        $availableModules = ModuleService::getAvailableModules();
+        $enabledModules = $company->moduleSettings()->pluck('is_enabled', 'module_key')->toArray();
+
+        return view('companies.modules', compact('company', 'availableModules', 'enabledModules'));
+    }
+
+    /**
+     * Update module settings.
+     */
+    public function updateModules(Request $request, Company $company)
+    {
+        $this->authorize('update', $company);
+
+        $modules = ModuleService::getAvailableModules();
+        
+        foreach ($modules as $key => $details) {
+            $isEnabled = $request->has("modules.$key");
+            
+            ModuleSetting::updateOrCreate(
+                ['company_id' => $company->id, 'module_key' => $key],
+                ['is_enabled' => $isEnabled]
+            );
+        }
+
+        return redirect()->back()->with('success', 'Modules updated successfully.');
     }
 }

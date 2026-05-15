@@ -10,6 +10,11 @@ use App\Http\Controllers\CouponController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\TableController;
+use App\Http\Controllers\SectionController;
+use App\Http\Controllers\KitchenController;
+use App\Http\Controllers\WaiterController;
+use App\Http\Controllers\GuestOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -22,12 +27,21 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Guest QR Ordering Routes (Public)
+Route::get('/menu/{token}', [GuestOrderController::class, 'show'])->name('guest.menu');
+Route::post('/menu/{token}/order', [GuestOrderController::class, 'placeOrder'])->name('guest.order');
+Route::get('/menu/{token}/status', [GuestOrderController::class, 'getStatus'])->name('guest.status');
+Route::delete('/menu/{token}/item/{item}', [GuestOrderController::class, 'removeItem'])->name('guest.remove-item');
+Route::post('/menu/{token}/cancel', [GuestOrderController::class, 'cancelOrder'])->name('guest.cancel');
+
 Route::get('/dashboard', function () {
     return redirect()->route('pos.index');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/companies/switch/{company}', [CompanyController::class, 'switch'])->name('companies.switch');
+    Route::get('/companies/{company}/modules', [CompanyController::class, 'modules'])->name('companies.modules');
+    Route::put('/companies/{company}/modules', [CompanyController::class, 'updateModules'])->name('companies.modules.update');
     Route::resource('companies', CompanyController::class)->middleware('can:view companies');
     Route::resource('roles', RoleController::class)->middleware('can:view roles');
     Route::resource('users', UserController::class)->middleware('can:view users');
@@ -45,6 +59,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/pos/cart/update', [POSController::class, 'cartUpdate'])->name('pos.cart.update');
         Route::post('/pos/cart/remove', [POSController::class, 'cartRemove'])->name('pos.cart.remove');
         Route::post('/pos/cart/clear', [POSController::class, 'cartClear'])->name('pos.cart.clear');
+        Route::get('/pos/active-tables', [POSController::class, 'activeTables'])->name('pos.active-tables');
+        Route::post('/pos/load-order', [POSController::class, 'loadOrder'])->name('pos.load-order');
         Route::post('/pos/checkout', [POSController::class, 'checkout'])->name('pos.checkout');
     });
 
@@ -54,6 +70,24 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::resource('customers', CustomerController::class)->middleware('can:view customers');
     Route::resource('orders', OrderController::class)->middleware('can:view orders');
     Route::resource('coupons', CouponController::class)->middleware('can:view coupons');
+
+    // Restaurant Specific Routes
+    Route::get('/tables/map', [TableController::class, 'map'])->name('tables.map');
+    Route::resource('tables', TableController::class);
+    Route::resource('sections', SectionController::class);
+
+    // Kitchen Routes
+    Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
+    Route::patch('/kitchen/tickets/{ticket}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.tickets.status');
+    Route::patch('/kitchen/items/{item}/status', [KitchenController::class, 'updateItemStatus'])->name('kitchen.items.status');
+
+    // Waiter Routes
+    Route::get('/waiter', [WaiterController::class, 'index'])->name('waiter.index');
+    Route::get('/waiter/order/{table}', [WaiterController::class, 'createOrder'])->name('waiter.order');
+    Route::post('/waiter/order/{table}', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
+    Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
+    Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
+    Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
 });
 
 require __DIR__.'/auth.php';

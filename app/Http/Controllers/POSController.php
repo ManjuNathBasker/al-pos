@@ -9,6 +9,8 @@ use App\Models\Customer;
 use App\Models\WalletTransaction;
 use App\Models\OrderItem;
 use App\Models\Coupon;
+use App\Models\Payment;
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -151,8 +153,68 @@ class POSController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
+    //  GET /pos/active-tables — list tables with active orders
+    // ─────────────────────────────────────────────────────────────
+    public function activeTables()
+    {
+        $tables = \App\Models\RestaurantTable::where('status', 'occupied')
+            ->with(['activeOrder' => function($q) {
+                $q->with('items');
+            }, 'section'])
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'tables' => $tables
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /pos/load-order — load existing order into cart
+    // ─────────────────────────────────────────────────────────────
+    public function loadOrder(Request $request)
+    {
+        $request->validate(['order_id' => 'required|exists:orders,id']);
+        
+        $order = Order::with('items.product', 'customer')->findOrFail($request->order_id);
+        
+        // Convert order items to session cart format
+        $cart = [];
+        foreach ($order->items as $item) {
+            $productId = (string) $item->product_id;
+            if (isset($cart[$productId])) {
+                $cart[$productId]['qty'] += $item->quantity;
+            } else {
+                $cart[$productId] = [
+                    'id'    => $item->product_id,
+                    'name'  => $item->product_name,
+                    'price' => (float) $item->unit_price,
+                    'image' => $item->product->image ?? null,
+                    'sku'   => $item->product->sku   ?? null,
+                    'qty'   => $item->quantity,
+                ];
+            }
+        }
+
+        $this->saveCart($cart);
+
+        return response()->json([
+            'success' => true,
+            'cart' => $cart,
+            'order' => [
+                'id' => $order->id,
+                'customer' => $order->customer,
+                'discount_value' => $order->discount_value,
+                'discount_type' => $order->discount_type,
+                'note' => $order->note,
+                'total_amount' => $order->total_amount,
+            ]
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────
     //  POST /pos/checkout
-    //  Body: { discount_percent: float, note: string, total: float }
+    //  Body: { discount_percent: float, note: string, total: float, order_id: int|null }
     //  Returns: { success: true, order_id: string, total: float }
     // ─────────────────────────────────────────────────────────────
         public function customer(Request $request)
@@ -194,6 +256,7 @@ class POSController extends Controller
     public function checkout(Request $request)
     {
         $request->validate([
+            'order_id'         => 'nullable|exists:orders,id',
             'discount_percent' => 'nullable|numeric|min:0',
             'discount_type'    => 'nullable|in:fixed,percent',
             'coupon_id'        => 'nullable|exists:coupons,id',
@@ -237,10 +300,12 @@ class POSController extends Controller
             $changeReturned = max(0, $totalPaid - $request->total);
             $balanceDue = max(0, $request->total - $totalPaid);
 
-            // Create Order
-            $order = Order::create([
+            // Create or Update Order
+            $orderData = [
                 'user_id'          => auth()->id(),
                 'customer_id'      => $customer->id,
+                'service_type'     => $request->service_type ?? 'retail',
+                'delivery_status'  => ($request->service_type === 'delivery') ? 'pending' : null,
                 'discount_amount'  => $request->discount_percent ?? 0,
                 'discount_type'    => $request->discount_type ?? 'percent',
                 'discount_value'   => $request->discount_percent ?? 0,
@@ -256,7 +321,57 @@ class POSController extends Controller
                 'change_returned'  => $changeReturned,
                 'total_paid'       => $totalPaid,
                 'status'           => 'paid',
-            ]);
+            ];
+
+            if ($request->order_id) {
+                $order = Order::findOrFail($request->order_id);
+                $order->update($orderData);
+                
+                // If it was a dine-in order, free the table
+                if ($order->table_id) {
+                    \App\Models\RestaurantTable::where('id', $order->table_id)->update(['status' => 'available']);
+                }
+
+                // Mark all kitchen tickets as served if they weren't
+                \App\Models\KitchenTicket::where('order_id', $order->id)
+                    ->where('status', '!=', 'served')
+                    ->each(function($ticket) {
+                        $ticket->update(['status' => 'served']);
+                        // Only update items if the status is valid for them
+                        foreach($ticket->items as $item) {
+                            if ($item->orderItem) {
+                                $item->orderItem->update(['kitchen_status' => 'served']);
+                            }
+                            // KitchenTicketItem status enum only allows pending/preparing/ready
+                            // So we don't update its status to 'served' to avoid DB errors
+                        }
+                    });
+
+                // Clear existing items and re-add from cart to ensure consistency
+                $order->items()->delete();
+            } else {
+                if (empty($orderData['order_number'])) {
+                    $orderData['order_number'] = 'ORD-' . str_pad((Order::withTrashed()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
+                }
+                $order = Order::create($orderData);
+            }
+
+            // Split Billing / Granular Payments
+            if ($request->is_split && is_array($request->split_payments)) {
+                foreach ($request->split_payments as $p) {
+                    $order->payments()->create([
+                        'company_id' => $order->company_id,
+                        'payment_method' => $p['method'],
+                        'amount' => $p['amount'],
+                    ]);
+                }
+            } else {
+                // Regular payments
+                if ($cash > 0) $order->payments()->create(['company_id' => $order->company_id, 'payment_method' => 'cash', 'amount' => $cash]);
+                if ($card > 0) $order->payments()->create(['company_id' => $order->company_id, 'payment_method' => 'card', 'amount' => $card]);
+                if ($upi > 0) $order->payments()->create(['company_id' => $order->company_id, 'payment_method' => 'upi', 'amount' => $upi]);
+                if ($walletUsed > 0) $order->payments()->create(['company_id' => $order->company_id, 'payment_method' => 'wallet', 'amount' => $walletUsed]);
+            }
 
             // If coupon used, increment count
             if ($request->coupon_id) {
@@ -273,6 +388,27 @@ class POSController extends Controller
                     'quantity'        => $item['qty'],
                     'subtotal'   => $item['price'] * $item['qty'],
                 ]);
+            }
+
+            // If it's a new Takeaway or Delivery order in Restaurant Mode, send to Kitchen
+            $company = Company::find(session('company_id'));
+            if (!$request->order_id && $company->isModuleEnabled('restaurant_mode') && in_array($order->service_type, ['takeaway', 'delivery'])) {
+                $ticket = \App\Models\KitchenTicket::create([
+                    'order_id'      => $order->id,
+                    'company_id'    => $company->id,
+                    'ticket_number' => 'KOT-' . rand(100, 999),
+                    'status'        => 'pending',
+                ]);
+
+                foreach ($order->items as $orderItem) {
+                    \App\Models\KitchenTicketItem::create([
+                        'kitchen_ticket_id' => $ticket->id,
+                        'order_item_id'     => $orderItem->id,
+                        'product_name'      => $orderItem->product_name,
+                        'quantity'          => $orderItem->quantity,
+                        'status'            => 'pending',
+                    ]);
+                }
             }
 
             // Wallet Transactions
