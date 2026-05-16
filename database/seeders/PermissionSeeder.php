@@ -25,6 +25,7 @@ class PermissionSeeder extends Seeder
             'customers' => ['view customers', 'create customers', 'edit customers', 'delete customers'],
             'coupons' => ['view coupons', 'create coupons', 'edit coupons', 'delete coupons'],
             'pos' => ['access pos', 'process billing'],
+            'inventory' => ['view inventory', 'create inventory', 'edit inventory', 'delete inventory', 'manage recipes'],
             'reports' => ['view reports'],
             'settings' => ['manage settings'],
         ];

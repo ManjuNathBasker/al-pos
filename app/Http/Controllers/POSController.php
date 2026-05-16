@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\InventoryService;
 
 class POSController extends Controller
 {
@@ -275,6 +276,13 @@ class POSController extends Controller
             return response()->json(['success' => false, 'message' => 'Cart is empty'], 422);
         }
 
+        // Validate Inventory Stock
+        $inventoryService = new InventoryService();
+        $stockValidation = $inventoryService->validateStockAvailability($cart);
+        if (!$stockValidation['success']) {
+            return response()->json(['success' => false, 'message' => $stockValidation['message']], 422);
+        }
+
         DB::beginTransaction();
         try {
             // Find or create customer
@@ -444,6 +452,9 @@ class POSController extends Controller
                     'description' => 'Balance due for Order #' . $order->id,
                 ]);
             }
+
+            // Deduct Inventory Stock
+            $inventoryService->deductStockFromOrder($order);
 
             $this->saveCart([]);
             DB::commit();

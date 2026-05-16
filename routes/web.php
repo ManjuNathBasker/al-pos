@@ -14,6 +14,7 @@ use App\Http\Controllers\TableController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\WaiterController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\GuestOrderController;
 use Illuminate\Support\Facades\Route;
 
@@ -68,6 +69,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::resource('products', ProductController::class)->middleware('can:view products');
     Route::resource('categories', CategoryController::class)->middleware('can:view products'); // Grouped under products
     Route::resource('customers', CustomerController::class)->middleware('can:view customers');
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::resource('orders', OrderController::class)->middleware('can:view orders');
     Route::resource('coupons', CouponController::class)->middleware('can:view coupons');
 
@@ -88,6 +90,13 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
     Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
     Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
+
+    // Inventory Routes
+    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+    Route::put('/inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
+    Route::get('/inventory/recipes', [InventoryController::class, 'recipes'])->name('inventory.recipes');
+    Route::post('/inventory/recipes/{product}', [InventoryController::class, 'updateRecipe'])->name('inventory.update-recipe');
 });
 
 require __DIR__.'/auth.php';
