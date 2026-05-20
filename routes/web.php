@@ -16,6 +16,10 @@ use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\GuestOrderController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PurchasePaymentController;
+use App\Http\Controllers\PurchaseReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -97,6 +101,16 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::put('/inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
     Route::get('/inventory/recipes', [InventoryController::class, 'recipes'])->name('inventory.recipes');
     Route::post('/inventory/recipes/{product}', [InventoryController::class, 'updateRecipe'])->name('inventory.update-recipe');
+
+    // Purchase & Supplier Routes
+    Route::resource('suppliers', SupplierController::class);
+    Route::patch('/purchases/{purchase}/status', [PurchaseController::class, 'updateStatus'])->name('purchases.status');
+    Route::resource('purchases', PurchaseController::class);
+    Route::post('/purchases/{purchase}/payments', [PurchasePaymentController::class, 'store'])->name('purchase-payments.store');
+    Route::delete('/purchase-payments/{payment}', [PurchasePaymentController::class, 'destroy'])->name('purchase-payments.destroy');
+
+    // Reports
+    Route::get('/reports/purchases', [PurchaseReportController::class, 'index'])->name('reports.purchases');
 });
 
 require __DIR__.'/auth.php';

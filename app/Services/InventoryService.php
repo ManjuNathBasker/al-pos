@@ -147,4 +147,64 @@ class InventoryService
             'created_by'        => auth()->id() ?? 1, // Fallback to system user if needed
         ]);
     }
+
+    /**
+     * Add stock from a purchase order.
+     */
+    public function addStockFromPurchase(\App\Models\Purchase $purchase)
+    {
+        DB::beginTransaction();
+        try {
+            foreach ($purchase->items as $item) {
+                $inventoryItem = $item->inventoryItem;
+                if (!$inventoryItem) continue;
+
+                $inventoryItem->increment('current_stock', $item->quantity);
+
+                $this->logTransaction(
+                    $inventoryItem->id,
+                    'purchase',
+                    $item->quantity,
+                    'Purchase',
+                    $purchase->id,
+                    "Stock added from Purchase #{$purchase->purchase_number}"
+                );
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Failed to add stock from purchase #{$purchase->id}: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Reverse stock from a cancelled purchase order.
+     */
+    public function reverseStockFromPurchase(\App\Models\Purchase $purchase)
+    {
+        DB::beginTransaction();
+        try {
+            foreach ($purchase->items as $item) {
+                $inventoryItem = $item->inventoryItem;
+                if (!$inventoryItem) continue;
+
+                $inventoryItem->decrement('current_stock', $item->quantity);
+
+                $this->logTransaction(
+                    $inventoryItem->id,
+                    'restoration', // Reversing the purchase
+                    $item->quantity,
+                    'Purchase',
+                    $purchase->id,
+                    "Stock reversed for cancelled Purchase #{$purchase->purchase_number}"
+                );
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Failed to reverse stock for purchase #{$purchase->id}: " . $e->getMessage());
+            throw $e;
+        }
+    }
 }
