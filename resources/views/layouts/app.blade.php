@@ -15,8 +15,9 @@
 <body class="text-slate-800 antialiased h-screen flex overflow-hidden" x-data="{ sidebarOpen: false }">
     <!-- Sidebar -->
     <aside class="w-64 bg-white border-r border-slate-200 flex flex-col hidden md:flex">
-        <div class="h-16 flex items-center px-6 border-b border-slate-100 font-bold text-lg text-indigo-600">
-            {{ config('app.name', 'POS Admin') }}
+        <div class="h-16 flex items-center px-6 border-b border-slate-100 font-bold text-lg text-indigo-600 gap-3">
+            <x-application-logo class="w-8 h-8" />
+            <span>{{ config('app.name', 'POS Admin') }}</span>
         </div>
         @include('layouts.navigation')
         <!-- <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
@@ -98,7 +99,8 @@
     <!-- Main Content -->
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center md:hidden">
+            <div class="flex items-center md:hidden gap-2">
+                <x-application-logo class="w-6 h-6" />
                 <h1 class="text-lg font-bold text-indigo-600">{{ config('app.name', 'POS Admin') }}</h1>
             </div>
             <div class="flex items-center ml-auto gap-4">

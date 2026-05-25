@@ -20,6 +20,8 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchasePaymentController;
 use App\Http\Controllers\PurchaseReportController;
+use App\Http\Controllers\SalesReportController;
+use App\Http\Controllers\InventoryReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -110,7 +112,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::delete('/purchase-payments/{payment}', [PurchasePaymentController::class, 'destroy'])->name('purchase-payments.destroy');
 
     // Reports
+    Route::get('/reports/sales', [SalesReportController::class, 'index'])->name('reports.sales');
+    Route::get('/reports/sales/export', [SalesReportController::class, 'export'])->name('reports.sales.export');
+    Route::get('/reports/inventory-report', [InventoryReportController::class, 'index'])->name('reports.inventory');
+    Route::get('/reports/inventory-report/export', [InventoryReportController::class, 'export'])->name('reports.inventory.export');
     Route::get('/reports/purchases', [PurchaseReportController::class, 'index'])->name('reports.purchases');
+    Route::get('/reports/purchases/export', [PurchaseReportController::class, 'export'])->name('reports.purchases.export');
 
     // Accounting & Financial Management Routes
     Route::resource('accounts', App\Http\Controllers\AccountController::class);
@@ -118,7 +125,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::resource('expense-categories', App\Http\Controllers\ExpenseCategoryController::class)->except(['create', 'edit', 'show']);
     Route::resource('expenses', App\Http\Controllers\ExpenseController::class)->except(['create', 'edit', 'show']);
     Route::get('/reports/profit-loss', [App\Http\Controllers\FinancialReportController::class, 'profitAndLoss'])->name('reports.profit-loss');
+    Route::get('/reports/profit-loss/export', [App\Http\Controllers\FinancialReportController::class, 'exportProfitLoss'])->name('reports.profit-loss.export');
     Route::get('/reports/balance-sheet', [App\Http\Controllers\FinancialReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
+    Route::get('/reports/balance-sheet/export', [App\Http\Controllers\FinancialReportController::class, 'exportBalanceSheet'])->name('reports.balance-sheet.export');
 });
 
 require __DIR__.'/auth.php';

@@ -552,10 +552,8 @@
             {{-- Logo / Brand & Exit --}}
             <div class="px-5 py-5 border-b border-slate-100 flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg cat-active flex items-center justify-center">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
+                    <div class="flex items-center justify-center">
+                        <img src="{{ asset('/assets/images/al-pos.png') }}" alt="{{ config('app.name') }}" class="w-10 h-10 object-contain">
                     </div>
                     <span class="text-sm font-bold text-slate-800">{{ config('app.name') }}</span>
                 </div>
