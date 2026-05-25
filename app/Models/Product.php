@@ -89,6 +89,11 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function recipeItems()
+    {
+        return $this->hasMany(RecipeItem::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────
     public function scopeActive($query)
     {

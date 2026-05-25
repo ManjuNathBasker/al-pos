@@ -41,9 +41,11 @@ class Order extends Model
         'service_type',
         'kitchen_status',
         'waiter_id',
+        'is_stock_deducted',
     ];
 
     protected $casts = [
+        'is_stock_deducted' => 'boolean',
         'subtotal'        => 'float',
         'discount_amount' => 'float',
         'tax_amount'      => 'float',

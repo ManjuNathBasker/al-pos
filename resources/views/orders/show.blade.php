@@ -39,6 +39,18 @@
             </svg>
             WhatsApp
         </a>
+
+        @if($order->status !== 'cancelled')
+        <form action="{{ route('orders.cancel', $order) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this order and restore stock?')">
+            @csrf
+            <button type="submit" class="inline-flex items-center justify-center rounded-lg border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hide-on-print">
+                <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel Order
+            </button>
+        </form>
+        @endif
     </div>
 </div>
 

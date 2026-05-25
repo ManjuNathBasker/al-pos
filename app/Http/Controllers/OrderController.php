@@ -40,4 +40,26 @@ class OrderController extends Controller
         $order->load(['items.product', 'user', 'customer']);
         return view('orders.show', compact('order'));
     }
+
+    public function cancel(Order $order)
+    {
+        if ($order->status === 'cancelled') {
+            return redirect()->back()->with('error', 'Order is already cancelled.');
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $order->update(['status' => 'cancelled']);
+            
+            // Restore stock if it was deducted
+            $inventoryService = new \App\Services\InventoryService();
+            $inventoryService->restoreStockFromOrder($order);
+
+            \Illuminate\Support\Facades\DB::commit();
+            return redirect()->back()->with('success', 'Order cancelled and stock restored successfully.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to cancel order: ' . $e->getMessage());
+        }
+    }
 }
