@@ -456,6 +456,9 @@ class POSController extends Controller
             // Deduct Inventory Stock
             $inventoryService->deductStockFromOrder($order);
 
+            // Generate Accounting Entries
+            app(\App\Services\AccountingService::class)->recordSale($order);
+
             $this->saveCart([]);
             DB::commit();
 

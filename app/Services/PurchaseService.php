@@ -55,6 +55,9 @@ class PurchaseService
                 $this->inventoryService->addStockFromPurchase($purchase);
             }
 
+            // Generate Accounting Entries
+            app(\App\Services\AccountingService::class)->recordPurchase($purchase);
+
             DB::commit();
             return $purchase;
         } catch (\Exception $e) {
@@ -103,6 +106,9 @@ class PurchaseService
             ]);
 
             $this->updatePaymentStatus($purchase);
+
+            // Generate Accounting Entries
+            app(\App\Services\AccountingService::class)->recordSupplierPayment($payment);
 
             DB::commit();
             return $payment;

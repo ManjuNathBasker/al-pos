@@ -111,6 +111,14 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
     // Reports
     Route::get('/reports/purchases', [PurchaseReportController::class, 'index'])->name('reports.purchases');
+
+    // Accounting & Financial Management Routes
+    Route::resource('accounts', App\Http\Controllers\AccountController::class);
+    Route::resource('journal-entries', App\Http\Controllers\JournalEntryController::class)->only(['index', 'store', 'show']);
+    Route::resource('expense-categories', App\Http\Controllers\ExpenseCategoryController::class)->except(['create', 'edit', 'show']);
+    Route::resource('expenses', App\Http\Controllers\ExpenseController::class)->except(['create', 'edit', 'show']);
+    Route::get('/reports/profit-loss', [App\Http\Controllers\FinancialReportController::class, 'profitAndLoss'])->name('reports.profit-loss');
+    Route::get('/reports/balance-sheet', [App\Http\Controllers\FinancialReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
 });
 
 require __DIR__.'/auth.php';
