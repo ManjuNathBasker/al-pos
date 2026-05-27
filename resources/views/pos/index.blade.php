@@ -288,6 +288,87 @@
 
 <body class="h-screen overflow-hidden text-slate-800" x-data="posApp()" x-init="init()">
 
+    @php
+        $openSession = \App\Models\RegisterSession::openForUser(auth()->id())->first();
+    @endphp
+
+    @if(!$openSession)
+    {{-- Blocking Modal for Opening Register --}}
+    <div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 border border-slate-100">
+            <div class="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+                <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 text-center mb-2">Open Register</h2>
+            <p class="text-sm text-slate-500 text-center mb-8">Please enter the starting cash amount to open your shift.</p>
+            
+            <form action="{{ route('register-sessions.open') }}" method="POST">
+                @csrf
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Opening Cash Amount ($)</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <span class="text-slate-400 font-bold">$</span>
+                        </div>
+                        <input type="number" name="opening_amount" step="0.01" min="0" required autofocus
+                            class="w-full pl-10 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow"
+                            placeholder="0.00">
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{{ route('dashboard') }}" class="flex-1 py-4 text-center font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors">Back</a>
+                    <button type="submit" class="flex-1 py-4 text-center font-bold text-white bg-indigo-600 rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">Open Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    @if($openSession)
+    {{-- Close Register Modal --}}
+    <div x-show="showCloseRegister" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-transition>
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 border border-slate-100">
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Close Register</h2>
+            <p class="text-sm text-slate-500 mb-6">Enter the actual cash counted in your drawer.</p>
+            
+            <form action="{{ route('register-sessions.close', $openSession->id) }}" method="POST">
+                @csrf
+                
+                <div class="bg-slate-50 p-4 rounded-2xl mb-6">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm text-slate-600">Opening Amount:</span>
+                        <span class="text-sm font-bold">${{ number_format($openSession->opening_amount, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-slate-600">Expected Closing:</span>
+                        <span class="text-sm font-bold text-indigo-600">${{ number_format($openSession->calculateExpectedAmount(), 2) }}</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Actual Cash Counted ($)</label>
+                    <input type="number" name="closing_amount_actual" step="0.01" min="0" required
+                        class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                        placeholder="0.00">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Notes / Discrepancy Reason</label>
+                    <textarea name="notes" rows="2" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 focus:ring-2 focus:ring-red-500 outline-none transition-all" placeholder="Optional notes..."></textarea>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="button" @click="showCloseRegister = false" class="flex-1 py-4 text-center font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 py-4 text-center font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-red-200 transition-all">Close Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    <!-- POS Interface begins here. -->
     {{-- ===================================================================
      GLOBAL TOAST NOTIFICATION
 =================================================================== --}}
@@ -542,8 +623,7 @@
     {{-- ===================================================================
      MAIN LAYOUT: Sidebar | Products | Cart
 =================================================================== --}}
-    <div class="flex h-screen overflow-hidden">
-
+    <div class="flex h-screen overflow-hidden w-full {{ !$openSession ? 'pointer-events-none blur-sm' : '' }}">
         {{-- ===============================================================
          LEFT: CATEGORY SIDEBAR
     =============================================================== --}}
@@ -576,6 +656,14 @@
                     </div>
                     <div class="ml-auto w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" title="Online"></div>
                 </div>
+                @if($openSession)
+                <div class="mt-3">
+                    <button @click="showCloseRegister = true" class="w-full py-2 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Close Register
+                    </button>
+                </div>
+                @endif
             </div>
 
             {{-- Category List --}}
@@ -1246,13 +1334,14 @@
             </div>
         </div>
     </div>
-
 </body>
 
+</html>
 <script>
 function posApp() {
     return {
         // ── State ──
+        showCloseRegister: false,
         activeCategory: 'all',
         activeCategoryName: 'All Products',
         searchQuery: '',

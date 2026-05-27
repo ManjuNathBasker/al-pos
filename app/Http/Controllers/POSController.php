@@ -283,6 +283,12 @@ class POSController extends Controller
             return response()->json(['success' => false, 'message' => $stockValidation['message']], 422);
         }
 
+        // Validate Register Session
+        $openSession = \App\Models\RegisterSession::openForUser(auth()->id())->first();
+        if (!$openSession && empty($request->order_id)) {
+            return response()->json(['success' => false, 'message' => 'Please open a register session before processing sales.'], 422);
+        }
+
         DB::beginTransaction();
         try {
             // Find or create customer
@@ -329,6 +335,7 @@ class POSController extends Controller
                 'change_returned'  => $changeReturned,
                 'total_paid'       => $totalPaid,
                 'status'           => 'paid',
+                'register_session_id' => $openSession ? $openSession->id : null,
             ];
 
             if ($request->order_id) {

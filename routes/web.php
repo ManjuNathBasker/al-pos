@@ -69,6 +69,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/pos/active-tables', [POSController::class, 'activeTables'])->name('pos.active-tables');
         Route::post('/pos/load-order', [POSController::class, 'loadOrder'])->name('pos.load-order');
         Route::post('/pos/checkout', [POSController::class, 'checkout'])->name('pos.checkout');
+
+        // Register Sessions (Shift Management)
+        Route::post('/register-sessions/open', [\App\Http\Controllers\RegisterSessionController::class, 'store'])->name('register-sessions.open');
+        Route::post('/register-sessions/{registerSession}/close', [\App\Http\Controllers\RegisterSessionController::class, 'close'])->name('register-sessions.close');
     });
 
     // Administrative Resource Routes
@@ -78,6 +82,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::resource('orders', OrderController::class)->middleware('can:view orders');
     Route::resource('coupons', CouponController::class)->middleware('can:view coupons');
+    Route::get('/register-sessions', [\App\Http\Controllers\RegisterSessionController::class, 'index'])->name('register-sessions.index');
 
     // Restaurant Specific Routes
     Route::get('/tables/map', [TableController::class, 'map'])->name('tables.map');
