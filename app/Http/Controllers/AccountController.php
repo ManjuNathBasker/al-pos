@@ -29,9 +29,11 @@ class AccountController extends Controller
             'account_type' => 'required|in:Asset,Liability,Equity,Income,Expense',
             'parent_account_id' => 'nullable|exists:accounts,id',
             'opening_balance' => 'numeric|min:0',
+            'show_in_pos' => 'boolean',
         ]);
 
         $validated['company_id'] = auth()->user()->company_id;
+        $validated['show_in_pos'] = $request->has('show_in_pos');
 
         Account::create($validated);
 
@@ -41,7 +43,8 @@ class AccountController extends Controller
     public function update(Request $request, Account $account)
     {
         if ($account->is_system) {
-            return back()->with('error', 'Cannot modify system accounts.');
+            $account->update(['show_in_pos' => $request->has('show_in_pos')]);
+            return back()->with('success', 'System account visibility updated successfully.');
         }
 
         $validated = $request->validate([
@@ -50,8 +53,11 @@ class AccountController extends Controller
             'account_type' => 'required|in:Asset,Liability,Equity,Income,Expense',
             'parent_account_id' => 'nullable|exists:accounts,id',
             'status' => 'boolean',
+            'show_in_pos' => 'boolean',
         ]);
 
+        $validated['show_in_pos'] = $request->has('show_in_pos');
+        
         $account->update($validated);
 
         return back()->with('success', 'Account updated successfully.');

@@ -31,7 +31,10 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'        => 'required|string|max:255|unique:categories,name',
+            'name'        => [
+                'required', 'string', 'max:255',
+                \Illuminate\Validation\Rule::unique('categories')->where(fn ($query) => $query->where('company_id', session('company_id')))
+            ],
             'icon'        => 'nullable|string|max:50',
             'color'       => 'nullable|string|max:20',
             'description' => 'nullable|string',
@@ -60,7 +63,10 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
-            'name'        => 'required|string|max:255|unique:categories,name,' . $category->id,
+            'name'        => [
+                'required', 'string', 'max:255',
+                \Illuminate\Validation\Rule::unique('categories')->ignore($category->id)->where(fn ($query) => $query->where('company_id', session('company_id')))
+            ],
             'icon'        => 'nullable|string|max:50',
             'color'       => 'nullable|string|max:20',
             'description' => 'nullable|string',

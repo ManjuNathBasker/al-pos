@@ -1239,30 +1239,16 @@
                             </div>
 
                             <div x-show="!isSplit" class="space-y-3">
-                                <div>
-                                    <label class="block text-sm text-slate-600 mb-1">Cash</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                        <input type="number" x-model="payments.cash" step="0.01" 
-                                               class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
+                                <template x-for="acc in paymentAccounts" :key="acc.id">
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1" x-text="acc.account_name"></label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                                            <input type="number" x-model="payments[acc.id]" @input="recalcDynamicCash(acc.id)" step="0.01" 
+                                                   class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-slate-600 mb-1">UPI</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                        <input type="number" x-model="payments.upi" @input="recalcCash" step="0.01" 
-                                               class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-slate-600 mb-1">Card</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                        <input type="number" x-model="payments.card" @input="recalcCash" step="0.01" 
-                                               class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
-                                    </div>
-                                </div>
+                                </template>
                             </div>
 
                             {{-- Split Payments List --}}
@@ -1272,9 +1258,9 @@
                                         <div class="flex-1 space-y-1">
                                             <label class="text-[10px] font-black uppercase text-slate-400">Method</label>
                                             <select x-model="p.method" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
-                                                <option value="cash">Cash</option>
-                                                <option value="card">Card</option>
-                                                <option value="upi">UPI</option>
+                                                <template x-for="acc in paymentAccounts" :key="acc.id">
+                                                    <option :value="acc.id" x-text="acc.account_name"></option>
+                                                </template>
                                             </select>
                                         </div>
                                         <div class="flex-1 space-y-1">
@@ -1368,17 +1354,19 @@ function posApp() {
             phone: '',
             address: '',
         },
-        payments: { cash: 0, card: 0, upi: 0 },
+        paymentAccounts: {!! json_encode($paymentAccounts ?? []) !!},
+        payments: {},
         useWallet: false,
 
         get totalPaid() {
             if (this.isSplit) {
                 return this.splitPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
             }
-            let cash = parseFloat(this.payments.cash) || 0;
-            let card = parseFloat(this.payments.card) || 0;
-            let upi = parseFloat(this.payments.upi) || 0;
-            return cash + card + upi + this.walletAmount;
+            let sum = 0;
+            for (let acc of this.paymentAccounts) {
+                sum += parseFloat(this.payments[acc.id]) || 0;
+            }
+            return sum + this.walletAmount;
         },
 
         get walletAmount() {
@@ -1386,12 +1374,24 @@ function posApp() {
             return Math.min(this.customer.wallet_balance || 0, this.grandTotal);
         },
 
-        recalcCash() {
-            let others = (parseFloat(this.payments.upi) || 0) + (parseFloat(this.payments.card) || 0) + this.walletAmount;
+        recalcDynamicCash(changedAccountId) {
+            // Find the primary account (we'll just use the first account in the list)
+            if (this.paymentAccounts.length === 0) return;
+            let primaryAccountId = this.paymentAccounts[0].id;
+            
+            if (changedAccountId === primaryAccountId) return; // Don't auto-adjust the one that user just typed in
+            
+            let others = this.walletAmount;
+            for (let acc of this.paymentAccounts) {
+                if (acc.id !== primaryAccountId) {
+                    others += (parseFloat(this.payments[acc.id]) || 0);
+                }
+            }
+            
             if (others >= this.grandTotal) {
-                this.payments.cash = 0;
+                this.payments[primaryAccountId] = 0;
             } else {
-                this.payments.cash = (this.grandTotal - others).toFixed(2);
+                this.payments[primaryAccountId] = (this.grandTotal - others).toFixed(2);
             }
         },
 
@@ -1652,15 +1652,27 @@ function posApp() {
             }
         },
 
+        // Initialize payments when order loads or modal opens
+        initPayments() {
+            this.payments = {};
+            if(this.paymentAccounts.length > 0) {
+                this.payments[this.paymentAccounts[0].id] = this.grandTotal.toFixed(2);
+            }
+            this.isSplit = false;
+            if(this.paymentAccounts.length > 0) {
+                this.splitPayments = [{ method: this.paymentAccounts[0].id, amount: this.grandTotal.toFixed(2) }];
+            } else {
+                this.splitPayments = [];
+            }
+        },
+        
         checkout() {
             if (this.cartItems.length === 0) {
                 this.showToast('Your cart is empty!', 'error');
                 return;
             }
             this.showBillingModal = true;
-            this.payments.cash = this.grandTotal.toFixed(2);
-            this.payments.upi = 0;
-            this.payments.card = 0;
+            this.initPayments();
             this.useWallet = false;
         },
 

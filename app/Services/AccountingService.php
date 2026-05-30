@@ -55,13 +55,51 @@ class AccountingService
                 'created_by' => $order->created_by ?? auth()->id(),
             ]);
 
-            // Debit Cash
-            if ($order->amount_paid > 0) {
+            // Debit Specific Accounts based on dynamic payments
+            foreach ($order->payments as $payment) {
+                if ($payment->payment_method === 'wallet') {
+                    $walletAccount = $this->getSystemAccount($companyId, 'Customer Wallet', 'Liability', '2200');
+                    JournalEntryItem::create([
+                        'journal_entry_id' => $journal->id,
+                        'account_id' => $walletAccount->id,
+                        'debit_amount' => $payment->amount,
+                        'credit_amount' => 0,
+                    ]);
+                } else if (is_numeric($payment->payment_method)) {
+                    $account = Account::find($payment->payment_method);
+                    if ($account) {
+                        JournalEntryItem::create([
+                            'journal_entry_id' => $journal->id,
+                            'account_id' => $account->id,
+                            'debit_amount' => $payment->amount,
+                            'credit_amount' => 0,
+                        ]);
+                    }
+                } else {
+                    // Legacy support
+                    $accountName = 'Cash';
+                    $accountCode = '1000';
+                    if ($payment->payment_method === 'card') { $accountName = 'Card / Bank'; $accountCode = '1010'; }
+                    if ($payment->payment_method === 'upi') { $accountName = 'UPI / Digital'; $accountCode = '1020'; }
+                    
+                    $acc = $this->getSystemAccount($companyId, $accountName, 'Asset', $accountCode);
+                    JournalEntryItem::create([
+                        'journal_entry_id' => $journal->id,
+                        'account_id' => $acc->id,
+                        'debit_amount' => $payment->amount,
+                        'credit_amount' => 0,
+                    ]);
+                }
+            }
+
+            // If change was returned, it is added to customer wallet, increasing liability (Credit)
+            if ($order->change_returned > 0) {
+                $walletAccount = $this->getSystemAccount($companyId, 'Customer Wallet', 'Liability', '2200');
                 JournalEntryItem::create([
                     'journal_entry_id' => $journal->id,
-                    'account_id' => $cashAccount->id,
-                    'debit_amount' => $order->amount_paid,
-                    'credit_amount' => 0,
+                    'account_id' => $walletAccount->id,
+                    'debit_amount' => 0,
+                    'credit_amount' => $order->change_returned,
                 ]);
             }
             

@@ -46,7 +46,12 @@ class POSController extends Controller
 
         $cart = $this->getCart();
 
-        return view('pos.index', compact('categories', 'products', 'cart'));
+        // Fetch dynamic payment accounts
+        $paymentAccounts = \App\Models\Account::where('show_in_pos', true)
+                            ->where('company_id', session('company_id'))
+                            ->get();
+
+        return view('pos.index', compact('categories', 'products', 'cart', 'paymentAccounts'));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -297,11 +302,8 @@ class POSController extends Controller
                 ['name' => $request->customer_name, 'wallet_balance' => 0]
             );
 
-            // Payment logic
-            $payments = $request->payment_details ?? ['cash' => 0, 'card' => 0, 'upi' => 0];
-            $cash = (float) ($payments['cash'] ?? 0);
-            $card = (float) ($payments['card'] ?? 0);
-            $upi = (float) ($payments['upi'] ?? 0);
+            // Payment logic (Dynamic Payments via Chart of Accounts)
+            $payments = $request->payment_details ?? [];
             
             $useWallet = filter_var($request->use_wallet, FILTER_VALIDATE_BOOLEAN);
             $walletUsed = 0;
@@ -310,7 +312,16 @@ class POSController extends Controller
                 $walletUsed = min($customer->wallet_balance, $request->total);
             }
 
-            $totalPaid = $cash + $card + $upi + $walletUsed;
+            $totalPaid = $walletUsed;
+            $dynamicPayments = [];
+            foreach ($payments as $accountId => $amount) {
+                $amt = (float) $amount;
+                if ($amt > 0) {
+                    $dynamicPayments[$accountId] = $amt;
+                    $totalPaid += $amt;
+                }
+            }
+
             $changeReturned = max(0, $totalPaid - $request->total);
             $balanceDue = max(0, $request->total - $totalPaid);
 
@@ -328,9 +339,6 @@ class POSController extends Controller
                 'subtotal'         => $request->subtotal,
                 'tax_amount'       => $request->tax_amount,
                 'total_amount'     => $request->total,
-                'cash_amount'      => $cash,
-                'upi_amount'       => $upi,
-                'card_amount'      => $card,
                 'wallet_used'      => $walletUsed,
                 'change_returned'  => $changeReturned,
                 'total_paid'       => $totalPaid,
@@ -376,16 +384,26 @@ class POSController extends Controller
                 foreach ($request->split_payments as $p) {
                     $order->payments()->create([
                         'company_id' => $order->company_id,
-                        'payment_method' => $p['method'],
+                        'payment_method' => (string) $p['method'], // account_id as string
                         'amount' => $p['amount'],
                     ]);
                 }
             } else {
-                // Regular payments
-                if ($cash > 0) $order->payments()->create(['company_id' => $order->company_id, 'payment_method' => 'cash', 'amount' => $cash]);
-                if ($card > 0) $order->payments()->create(['company_id' => $order->company_id, 'payment_method' => 'card', 'amount' => $card]);
-                if ($upi > 0) $order->payments()->create(['company_id' => $order->company_id, 'payment_method' => 'upi', 'amount' => $upi]);
-                if ($walletUsed > 0) $order->payments()->create(['company_id' => $order->company_id, 'payment_method' => 'wallet', 'amount' => $walletUsed]);
+                // Dynamic regular payments
+                foreach ($dynamicPayments as $accountId => $amount) {
+                    $order->payments()->create([
+                        'company_id' => $order->company_id,
+                        'payment_method' => (string) $accountId,
+                        'amount' => $amount,
+                    ]);
+                }
+                if ($walletUsed > 0) {
+                    $order->payments()->create([
+                        'company_id' => $order->company_id, 
+                        'payment_method' => 'wallet', 
+                        'amount' => $walletUsed
+                    ]);
+                }
             }
 
             // If coupon used, increment count

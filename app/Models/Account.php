@@ -21,6 +21,7 @@ class Account extends Model
         'current_balance',
         'status',
         'is_system',
+        'show_in_pos',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class Account extends Model
         'current_balance' => 'float',
         'status' => 'boolean',
         'is_system' => 'boolean',
+        'show_in_pos' => 'boolean',
     ];
 
     public function parent()

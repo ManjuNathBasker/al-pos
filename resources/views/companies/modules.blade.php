@@ -20,7 +20,7 @@
     @method('PUT')
 
     @php
-        $groupedModules = collect($availableModules)->groupBy('category');
+        $groupedModules = collect($availableModules)->groupBy('category', true);
     @endphp
 
     @foreach($groupedModules as $category => $modules)
