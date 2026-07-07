@@ -19,6 +19,39 @@
     </div>
 </div>
 
+<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
+    <form action="{{ route('expenses.index') }}" method="GET" class="flex flex-col sm:flex-row gap-4 items-end">
+        <div class="flex-1">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Filter by Category</label>
+            <select name="expense_category_id" class="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all text-sm">
+                <option value="">All Categories</option>
+                @foreach($categories as $cat)
+                    <option value="{{ $cat->id }}" {{ request('expense_category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="flex-1">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Filter by Paid From Account</label>
+            <select name="account_id" class="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all text-sm">
+                <option value="">All Accounts</option>
+                @foreach($accounts as $acc)
+                    <option value="{{ $acc->id }}" {{ request('account_id') == $acc->id ? 'selected' : '' }}>{{ $acc->account_name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-slate-800 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-600 transition-all">
+                Filter
+            </button>
+            @if(request()->hasAny(['expense_category_id', 'account_id']) && (request('expense_category_id') || request('account_id')))
+                <a href="{{ route('expenses.index') }}" class="ml-2 inline-flex items-center justify-center rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition-all">
+                    Clear
+                </a>
+            @endif
+        </div>
+    </form>
+</div>
+
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">

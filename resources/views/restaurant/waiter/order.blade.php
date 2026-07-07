@@ -50,12 +50,12 @@
         @foreach($categories as $category)
             <section x-show="activeCategory === 'all' || activeCategory === '{{ $category->id }}'">
                 <h2 class="text-2xl font-black text-slate-800 mb-6">{{ $category->name }}</h2>
-                <div class="grid grid-cols-1 gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     @foreach($products->where('category_id', $category->id) as $product)
-                        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 flex gap-4 hover:shadow-md transition-shadow">
-                            <div class="w-24 h-24 bg-slate-100 rounded-2xl flex-shrink-0 overflow-hidden">
+                        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            <div class="w-full sm:w-28 h-48 sm:h-28 bg-slate-100 rounded-2xl flex-shrink-0 overflow-hidden relative group">
                                 @if($product->image)
-                                    <img src="{{ str_starts_with($product->image, 'http') ? $product->image : asset('storage/' . $product->image) }}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/400x400?text=Food'">
+                                    <img src="{{ str_starts_with($product->image, 'http') ? $product->image : asset('storage/' . $product->image) }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.src='https://placehold.co/400x400?text=Food'">
                                 @else
                                     <div class="w-full h-full flex items-center justify-center text-slate-300">
                                         <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">

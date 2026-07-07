@@ -200,7 +200,7 @@
         document.getElementById('qr-table-name').innerText = tableName;
         document.getElementById('qr-url').innerText = url;
         const qrImg = document.getElementById('qr-image');
-        qrImg.src = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(url)}&choe=UTF-8`;
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
         document.getElementById('qr-modal').classList.remove('hidden');
     }
 </script>

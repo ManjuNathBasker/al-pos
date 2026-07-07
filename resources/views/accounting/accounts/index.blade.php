@@ -50,8 +50,16 @@
                         @if($account->is_system)
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ml-1">System</span>
                         @endif
+                        @if($account->show_in_pos)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 ml-1">POS</span>
+                        @endif
                     </td>
                     <td class="px-6 py-4 text-right space-x-2">
+                        <button @click="$dispatch('open-modal', 'edit-account-{{ $account->id }}')" class="p-2 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
                         @if(!$account->is_system)
                         <form action="{{ route('accounts.destroy', $account) }}" method="POST" class="inline">
                             @csrf @method('DELETE')
@@ -62,6 +70,63 @@
                             </button>
                         </form>
                         @endif
+                        
+                        <x-modal name="edit-account-{{ $account->id }}" focusable>
+                            <form action="{{ route('accounts.update', $account) }}" method="POST" class="p-6 text-left">
+                                @csrf
+                                @method('PUT')
+                                <h2 class="text-lg font-bold text-slate-800 mb-6 border-b pb-4">Edit Account</h2>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Account Name *</label>
+                                        <input type="text" name="account_name" value="{{ $account->account_name }}" required {{ $account->is_system ? 'readonly' : '' }} class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Account Code</label>
+                                        <input type="text" name="account_code" value="{{ $account->account_code }}" {{ $account->is_system ? 'readonly' : '' }} class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Account Type *</label>
+                                        @if($account->is_system)
+                                            <input type="text" value="{{ $account->account_type }}" readonly class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800">
+                                        @else
+                                            <select name="account_type" required class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
+                                                <option value="Asset" {{ $account->account_type == 'Asset' ? 'selected' : '' }}>Asset</option>
+                                                <option value="Liability" {{ $account->account_type == 'Liability' ? 'selected' : '' }}>Liability</option>
+                                                <option value="Equity" {{ $account->account_type == 'Equity' ? 'selected' : '' }}>Equity</option>
+                                                <option value="Income" {{ $account->account_type == 'Income' ? 'selected' : '' }}>Income</option>
+                                                <option value="Expense" {{ $account->account_type == 'Expense' ? 'selected' : '' }}>Expense</option>
+                                            </select>
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Parent Account</label>
+                                        @if($account->is_system)
+                                            <input type="text" value="{{ $account->parent ? $account->parent->account_name : 'None' }}" readonly class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800">
+                                        @else
+                                            <select name="parent_account_id" class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
+                                                <option value="">None</option>
+                                                @foreach($parentAccounts as $pAccount)
+                                                    @if($pAccount->id != $account->id)
+                                                        <option value="{{ $pAccount->id }}" {{ $account->parent_account_id == $pAccount->id ? 'selected' : '' }}>{{ $pAccount->account_name }}</option>
+                                                    @endif
+                                                @endforeach
+                                            </select>
+                                        @endif
+                                    </div>
+                                    <div class="sm:col-span-2 flex items-center mt-4">
+                                        <input type="checkbox" name="show_in_pos" id="edit_show_pos_{{ $account->id }}" value="1" {{ $account->show_in_pos ? 'checked' : '' }} class="rounded border-slate-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                        <label for="edit_show_pos_{{ $account->id }}" class="ml-2 block text-sm text-slate-900">
+                                            Show as Payment Method in POS
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mt-8 flex justify-end gap-3">
+                                    <button type="button" x-on:click="$dispatch('close')" class="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50">Cancel</button>
+                                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm">Save Changes</button>
+                                </div>
+                            </form>
+                        </x-modal>
                     </td>
                 </tr>
                 @empty
@@ -115,6 +180,12 @@
             <div class="sm:col-span-2">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Opening Balance</label>
                 <input type="number" step="0.01" name="opening_balance" value="0.00" class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
+            </div>
+            <div class="sm:col-span-2 flex items-center mt-2">
+                <input type="checkbox" name="show_in_pos" id="show_in_pos" value="1" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                <label for="show_in_pos" class="ml-2 block text-sm text-slate-900">
+                    Show as Payment Method in POS
+                </label>
             </div>
         </div>
         <div class="mt-8 flex justify-end gap-3">

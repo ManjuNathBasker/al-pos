@@ -288,6 +288,87 @@
 
 <body class="h-screen overflow-hidden text-slate-800" x-data="posApp()" x-init="init()">
 
+    @php
+        $openSession = \App\Models\RegisterSession::openForUser(auth()->id())->first();
+    @endphp
+
+    @if(!$openSession)
+    {{-- Blocking Modal for Opening Register --}}
+    <div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 border border-slate-100">
+            <div class="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+                <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 text-center mb-2">Open Register</h2>
+            <p class="text-sm text-slate-500 text-center mb-8">Please enter the starting cash amount to open your shift.</p>
+            
+            <form action="{{ route('register-sessions.open') }}" method="POST">
+                @csrf
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Opening Cash Amount ($)</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <span class="text-slate-400 font-bold">$</span>
+                        </div>
+                        <input type="number" name="opening_amount" step="0.01" min="0" required autofocus
+                            class="w-full pl-10 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow"
+                            placeholder="0.00">
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{{ route('dashboard') }}" class="flex-1 py-4 text-center font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors">Back</a>
+                    <button type="submit" class="flex-1 py-4 text-center font-bold text-white bg-indigo-600 rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">Open Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    @if($openSession)
+    {{-- Close Register Modal --}}
+    <div x-show="showCloseRegister" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-transition>
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 border border-slate-100">
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Close Register</h2>
+            <p class="text-sm text-slate-500 mb-6">Enter the actual cash counted in your drawer.</p>
+            
+            <form action="{{ route('register-sessions.close', $openSession->id) }}" method="POST">
+                @csrf
+                
+                <div class="bg-slate-50 p-4 rounded-2xl mb-6">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm text-slate-600">Opening Amount:</span>
+                        <span class="text-sm font-bold">${{ number_format($openSession->opening_amount, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-slate-600">Expected Closing:</span>
+                        <span class="text-sm font-bold text-indigo-600">${{ number_format($openSession->calculateExpectedAmount(), 2) }}</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Actual Cash Counted ($)</label>
+                    <input type="number" name="closing_amount_actual" step="0.01" min="0" required
+                        class="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                        placeholder="0.00">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Notes / Discrepancy Reason</label>
+                    <textarea name="notes" rows="2" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 focus:ring-2 focus:ring-red-500 outline-none transition-all" placeholder="Optional notes..."></textarea>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="button" @click="showCloseRegister = false" class="flex-1 py-4 text-center font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 py-4 text-center font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-red-200 transition-all">Close Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    <!-- POS Interface begins here. -->
     {{-- ===================================================================
      GLOBAL TOAST NOTIFICATION
 =================================================================== --}}
@@ -542,8 +623,7 @@
     {{-- ===================================================================
      MAIN LAYOUT: Sidebar | Products | Cart
 =================================================================== --}}
-    <div class="flex h-screen overflow-hidden">
-
+    <div class="flex h-screen overflow-hidden w-full {{ !$openSession ? 'pointer-events-none blur-sm' : '' }}">
         {{-- ===============================================================
          LEFT: CATEGORY SIDEBAR
     =============================================================== --}}
@@ -552,10 +632,8 @@
             {{-- Logo / Brand & Exit --}}
             <div class="px-5 py-5 border-b border-slate-100 flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg cat-active flex items-center justify-center">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
+                    <div class="flex items-center justify-center">
+                        <img src="{{ asset('/assets/images/al-pos.png') }}" alt="{{ config('app.name') }}" class="w-10 h-10 object-contain">
                     </div>
                     <span class="text-sm font-bold text-slate-800">{{ config('app.name') }}</span>
                 </div>
@@ -578,6 +656,14 @@
                     </div>
                     <div class="ml-auto w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" title="Online"></div>
                 </div>
+                @if($openSession)
+                <div class="mt-3">
+                    <button @click="showCloseRegister = true" class="w-full py-2 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Close Register
+                    </button>
+                </div>
+                @endif
             </div>
 
             {{-- Category List --}}
@@ -1153,30 +1239,16 @@
                             </div>
 
                             <div x-show="!isSplit" class="space-y-3">
-                                <div>
-                                    <label class="block text-sm text-slate-600 mb-1">Cash</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                        <input type="number" x-model="payments.cash" step="0.01" 
-                                               class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
+                                <template x-for="acc in paymentAccounts" :key="acc.id">
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1" x-text="acc.account_name"></label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                                            <input type="number" x-model="payments[acc.id]" @input="recalcDynamicCash(acc.id)" step="0.01" 
+                                                   class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-slate-600 mb-1">UPI</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                        <input type="number" x-model="payments.upi" @input="recalcCash" step="0.01" 
-                                               class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm text-slate-600 mb-1">Card</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                        <input type="number" x-model="payments.card" @input="recalcCash" step="0.01" 
-                                               class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
-                                    </div>
-                                </div>
+                                </template>
                             </div>
 
                             {{-- Split Payments List --}}
@@ -1186,9 +1258,9 @@
                                         <div class="flex-1 space-y-1">
                                             <label class="text-[10px] font-black uppercase text-slate-400">Method</label>
                                             <select x-model="p.method" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
-                                                <option value="cash">Cash</option>
-                                                <option value="card">Card</option>
-                                                <option value="upi">UPI</option>
+                                                <template x-for="acc in paymentAccounts" :key="acc.id">
+                                                    <option :value="acc.id" x-text="acc.account_name"></option>
+                                                </template>
                                             </select>
                                         </div>
                                         <div class="flex-1 space-y-1">
@@ -1248,13 +1320,14 @@
             </div>
         </div>
     </div>
-
 </body>
 
+</html>
 <script>
 function posApp() {
     return {
         // ── State ──
+        showCloseRegister: false,
         activeCategory: 'all',
         activeCategoryName: 'All Products',
         searchQuery: '',
@@ -1281,17 +1354,19 @@ function posApp() {
             phone: '',
             address: '',
         },
-        payments: { cash: 0, card: 0, upi: 0 },
+        paymentAccounts: {!! json_encode($paymentAccounts ?? []) !!},
+        payments: {},
         useWallet: false,
 
         get totalPaid() {
             if (this.isSplit) {
                 return this.splitPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
             }
-            let cash = parseFloat(this.payments.cash) || 0;
-            let card = parseFloat(this.payments.card) || 0;
-            let upi = parseFloat(this.payments.upi) || 0;
-            return cash + card + upi + this.walletAmount;
+            let sum = 0;
+            for (let acc of this.paymentAccounts) {
+                sum += parseFloat(this.payments[acc.id]) || 0;
+            }
+            return sum + this.walletAmount;
         },
 
         get walletAmount() {
@@ -1299,12 +1374,24 @@ function posApp() {
             return Math.min(this.customer.wallet_balance || 0, this.grandTotal);
         },
 
-        recalcCash() {
-            let others = (parseFloat(this.payments.upi) || 0) + (parseFloat(this.payments.card) || 0) + this.walletAmount;
+        recalcDynamicCash(changedAccountId) {
+            // Find the primary account (we'll just use the first account in the list)
+            if (this.paymentAccounts.length === 0) return;
+            let primaryAccountId = this.paymentAccounts[0].id;
+            
+            if (changedAccountId === primaryAccountId) return; // Don't auto-adjust the one that user just typed in
+            
+            let others = this.walletAmount;
+            for (let acc of this.paymentAccounts) {
+                if (acc.id !== primaryAccountId) {
+                    others += (parseFloat(this.payments[acc.id]) || 0);
+                }
+            }
+            
             if (others >= this.grandTotal) {
-                this.payments.cash = 0;
+                this.payments[primaryAccountId] = 0;
             } else {
-                this.payments.cash = (this.grandTotal - others).toFixed(2);
+                this.payments[primaryAccountId] = (this.grandTotal - others).toFixed(2);
             }
         },
 
@@ -1565,15 +1652,27 @@ function posApp() {
             }
         },
 
+        // Initialize payments when order loads or modal opens
+        initPayments() {
+            this.payments = {};
+            if(this.paymentAccounts.length > 0) {
+                this.payments[this.paymentAccounts[0].id] = this.grandTotal.toFixed(2);
+            }
+            this.isSplit = false;
+            if(this.paymentAccounts.length > 0) {
+                this.splitPayments = [{ method: this.paymentAccounts[0].id, amount: this.grandTotal.toFixed(2) }];
+            } else {
+                this.splitPayments = [];
+            }
+        },
+        
         checkout() {
             if (this.cartItems.length === 0) {
                 this.showToast('Your cart is empty!', 'error');
                 return;
             }
             this.showBillingModal = true;
-            this.payments.cash = this.grandTotal.toFixed(2);
-            this.payments.upi = 0;
-            this.payments.card = 0;
+            this.initPayments();
             this.useWallet = false;
         },
 

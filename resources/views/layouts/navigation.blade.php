@@ -1,4 +1,4 @@
-
+@php $activeCompany = \App\Models\Company::find(session('company_id')); @endphp
         <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
             <a href="{{ route('pos.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-indigo-50">
                 <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -39,6 +39,7 @@
             </a>
             @endcan
 
+            @if($activeCompany && $activeCompany->isModuleEnabled('inventory_management'))
             <div class="pt-4 pb-1">
                 <span class="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Inventory</span>
             </div>
@@ -58,13 +59,14 @@
                 Recipe Mapping
             </a>
             @endcan
+            @endif
 
             {{-- Restaurant Modules --}}
-            @php $activeCompany = \App\Models\Company::find(session('company_id')); @endphp
             @if($activeCompany && $activeCompany->isModuleEnabled('restaurant_mode'))
                 <div class="pt-4 pb-1">
                     <span class="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Restaurant</span>
                 </div>
+                @if($activeCompany->isModuleEnabled('table_management'))
                 @can('access table map')
                 <a href="{{ route('tables.map') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('tables.map') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
                     <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -73,6 +75,8 @@
                     Table Map
                 </a>
                 @endcan
+                @endif
+                @if($activeCompany->isModuleEnabled('kitchen_display'))
                 @can('access kitchen kds')
                 <a href="{{ route('kitchen.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('kitchen.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
                     <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,6 +85,8 @@
                     Kitchen (KDS)
                 </a>
                 @endcan
+                @endif
+                @if($activeCompany->isModuleEnabled('waiter_panel'))
                 @can('access waiter panel')
                 <a href="{{ route('waiter.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('waiter.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
                     <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -89,6 +95,7 @@
                     Waiter Panel
                 </a>
                 @endcan
+                @endif
                 @if($activeCompany->isModuleEnabled('table_management'))
                 @can('manage table settings')
                 <a href="{{ route('tables.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('tables.index') || request()->routeIs('sections.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
@@ -117,12 +124,6 @@
                 </svg>
                 Purchase Orders
             </a>
-            <a href="{{ route('reports.purchases') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('reports.purchases') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Purchase Reports
-            </a>
 
             <div class="pt-4 pb-1">
                 <span class="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Accounting & Finance</span>
@@ -145,6 +146,28 @@
                 </svg>
                 Expenses
             </a>
+
+            <div class="pt-4 pb-1">
+                <span class="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reports & Analytics</span>
+            </div>
+            <a href="{{ route('reports.sales') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('reports.sales') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Sales Reports
+            </a>
+            <a href="{{ route('reports.inventory') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('reports.inventory') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Inventory Reports
+            </a>
+            <a href="{{ route('reports.purchases') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('reports.purchases') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Purchase Reports
+            </a>
             <a href="{{ route('reports.profit-loss') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('reports.profit-loss') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
                 <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -156,6 +179,13 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                 </svg>
                 Balance Sheet
+            </a>
+
+            <a href="{{ route('register-sessions.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('register-sessions.index') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
+                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Register Sessions
             </a>
 
             <div class="pt-4 pb-1">

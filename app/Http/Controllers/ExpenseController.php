@@ -18,9 +18,19 @@ class ExpenseController extends Controller
         $this->accountingService = $accountingService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $expenses = Expense::with(['category', 'account'])->latest()->paginate(20);
+        $query = Expense::with(['category', 'account']);
+
+        if ($request->filled('expense_category_id')) {
+            $query->where('expense_category_id', $request->expense_category_id);
+        }
+
+        if ($request->filled('account_id')) {
+            $query->where('account_id', $request->account_id);
+        }
+
+        $expenses = $query->latest()->paginate(20)->withQueryString();
         $categories = ExpenseCategory::all();
         $accounts = Account::whereIn('account_type', ['Asset', 'Liability'])->where('status', true)->get();
 

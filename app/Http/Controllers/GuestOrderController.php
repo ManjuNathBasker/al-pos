@@ -17,6 +17,7 @@ class GuestOrderController extends Controller
     public function show(string $token)
     {
         $table = RestaurantTable::where('qr_token', $token)->firstOrFail();
+        $this->verifyQrOrdering($table);
         $categories = Category::all();
         $products = Product::where('is_active', true)->get();
         
@@ -32,6 +33,7 @@ class GuestOrderController extends Controller
     public function placeOrder(Request $request, string $token)
     {
         $table = RestaurantTable::where('qr_token', $token)->firstOrFail();
+        $this->verifyQrOrdering($table);
         $cart = $request->input('cart');
 
         if (empty($cart)) {
@@ -126,6 +128,7 @@ class GuestOrderController extends Controller
     public function getStatus(string $token)
     {
         $table = RestaurantTable::where('qr_token', $token)->firstOrFail();
+        $this->verifyQrOrdering($table);
         $order = Order::where('table_id', $table->id)
             ->whereIn('status', ['pending', 'processing'])
             ->with('items')
@@ -146,6 +149,7 @@ class GuestOrderController extends Controller
     public function removeItem(Request $request, string $token, OrderItem $item)
     {
         $table = RestaurantTable::where('qr_token', $token)->firstOrFail();
+        $this->verifyQrOrdering($table);
         $order = $item->order;
 
         if ($order->table_id !== $table->id) abort(403);
@@ -184,6 +188,7 @@ class GuestOrderController extends Controller
     public function cancelOrder(Request $request, string $token)
     {
         $table = RestaurantTable::where('qr_token', $token)->firstOrFail();
+        $this->verifyQrOrdering($table);
         $order = Order::where('table_id', $table->id)
             ->whereIn('status', ['pending', 'processing'])
             ->first();
@@ -209,6 +214,13 @@ class GuestOrderController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    protected function verifyQrOrdering(RestaurantTable $table)
+    {
+        if (!$table->company->isModuleEnabled('qr_ordering')) {
+            abort(403, 'QR Ordering is not enabled for this store.');
         }
     }
 }

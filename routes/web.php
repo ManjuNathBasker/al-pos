@@ -20,6 +20,8 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchasePaymentController;
 use App\Http\Controllers\PurchaseReportController;
+use App\Http\Controllers\SalesReportController;
+use App\Http\Controllers\InventoryReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -67,6 +69,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/pos/active-tables', [POSController::class, 'activeTables'])->name('pos.active-tables');
         Route::post('/pos/load-order', [POSController::class, 'loadOrder'])->name('pos.load-order');
         Route::post('/pos/checkout', [POSController::class, 'checkout'])->name('pos.checkout');
+
+        // Register Sessions (Shift Management)
+        Route::post('/register-sessions/open', [\App\Http\Controllers\RegisterSessionController::class, 'store'])->name('register-sessions.open');
+        Route::post('/register-sessions/{registerSession}/close', [\App\Http\Controllers\RegisterSessionController::class, 'close'])->name('register-sessions.close');
     });
 
     // Administrative Resource Routes
@@ -76,31 +82,40 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::resource('orders', OrderController::class)->middleware('can:view orders');
     Route::resource('coupons', CouponController::class)->middleware('can:view coupons');
+    Route::get('/register-sessions', [\App\Http\Controllers\RegisterSessionController::class, 'index'])->name('register-sessions.index');
 
     // Restaurant Specific Routes
-    Route::get('/tables/map', [TableController::class, 'map'])->name('tables.map');
-    Route::resource('tables', TableController::class);
-    Route::resource('sections', SectionController::class);
+    Route::middleware('module:table_management')->group(function () {
+        Route::get('/tables/map', [TableController::class, 'map'])->name('tables.map');
+        Route::resource('tables', TableController::class);
+        Route::resource('sections', SectionController::class);
+    });
 
     // Kitchen Routes
-    Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
-    Route::patch('/kitchen/tickets/{ticket}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.tickets.status');
-    Route::patch('/kitchen/items/{item}/status', [KitchenController::class, 'updateItemStatus'])->name('kitchen.items.status');
+    Route::middleware('module:kitchen_display')->group(function () {
+        Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
+        Route::patch('/kitchen/tickets/{ticket}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.tickets.status');
+        Route::patch('/kitchen/items/{item}/status', [KitchenController::class, 'updateItemStatus'])->name('kitchen.items.status');
+    });
 
     // Waiter Routes
-    Route::get('/waiter', [WaiterController::class, 'index'])->name('waiter.index');
-    Route::get('/waiter/order/{table}', [WaiterController::class, 'createOrder'])->name('waiter.order');
-    Route::post('/waiter/order/{table}', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
-    Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
-    Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
-    Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
+    Route::middleware('module:waiter_panel')->group(function () {
+        Route::get('/waiter', [WaiterController::class, 'index'])->name('waiter.index');
+        Route::get('/waiter/order/{table}', [WaiterController::class, 'createOrder'])->name('waiter.order');
+        Route::post('/waiter/order/{table}', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
+        Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
+        Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
+        Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
+    });
 
     // Inventory Routes
-    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-    Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
-    Route::put('/inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
-    Route::get('/inventory/recipes', [InventoryController::class, 'recipes'])->name('inventory.recipes');
-    Route::post('/inventory/recipes/{product}', [InventoryController::class, 'updateRecipe'])->name('inventory.update-recipe');
+    Route::middleware('module:inventory_management')->group(function () {
+        Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+        Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+        Route::put('/inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
+        Route::get('/inventory/recipes', [InventoryController::class, 'recipes'])->name('inventory.recipes');
+        Route::post('/inventory/recipes/{product}', [InventoryController::class, 'updateRecipe'])->name('inventory.update-recipe');
+    });
 
     // Purchase & Supplier Routes
     Route::resource('suppliers', SupplierController::class);
@@ -110,7 +125,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::delete('/purchase-payments/{payment}', [PurchasePaymentController::class, 'destroy'])->name('purchase-payments.destroy');
 
     // Reports
+    Route::get('/reports/sales', [SalesReportController::class, 'index'])->name('reports.sales');
+    Route::get('/reports/sales/export', [SalesReportController::class, 'export'])->name('reports.sales.export');
+    Route::get('/reports/inventory-report', [InventoryReportController::class, 'index'])->name('reports.inventory');
+    Route::get('/reports/inventory-report/export', [InventoryReportController::class, 'export'])->name('reports.inventory.export');
     Route::get('/reports/purchases', [PurchaseReportController::class, 'index'])->name('reports.purchases');
+    Route::get('/reports/purchases/export', [PurchaseReportController::class, 'export'])->name('reports.purchases.export');
 
     // Accounting & Financial Management Routes
     Route::resource('accounts', App\Http\Controllers\AccountController::class);
@@ -118,7 +138,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::resource('expense-categories', App\Http\Controllers\ExpenseCategoryController::class)->except(['create', 'edit', 'show']);
     Route::resource('expenses', App\Http\Controllers\ExpenseController::class)->except(['create', 'edit', 'show']);
     Route::get('/reports/profit-loss', [App\Http\Controllers\FinancialReportController::class, 'profitAndLoss'])->name('reports.profit-loss');
+    Route::get('/reports/profit-loss/export', [App\Http\Controllers\FinancialReportController::class, 'exportProfitLoss'])->name('reports.profit-loss.export');
     Route::get('/reports/balance-sheet', [App\Http\Controllers\FinancialReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
+    Route::get('/reports/balance-sheet/export', [App\Http\Controllers\FinancialReportController::class, 'exportBalanceSheet'])->name('reports.balance-sheet.export');
 });
 
 require __DIR__.'/auth.php';

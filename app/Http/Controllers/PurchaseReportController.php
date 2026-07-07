@@ -6,6 +6,9 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PurchasesExport;
 
 class PurchaseReportController extends Controller
 {
@@ -40,5 +43,37 @@ class PurchaseReportController extends Controller
             ->get();
 
         return view('reports.purchases', compact('stats', 'topSuppliers', 'monthlyData', 'startDate', 'endDate'));
+    }
+
+    public function export(Request $request)
+    {
+        $format = $request->format ?? 'pdf';
+        
+        $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
+        $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+        $supplierId = $request->supplier_id ?? 'all';
+        $status = $request->status ?? 'all';
+
+        $query = Purchase::with(['supplier'])
+            ->whereBetween('purchase_date', [$startDate, $endDate]);
+
+        if ($supplierId !== 'all') {
+            $query->where('supplier_id', $supplierId);
+        }
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $purchases = $query->orderBy('purchase_date', 'desc')->get();
+        $company = \App\Models\Company::find(session('company_id'));
+
+        if ($format === 'excel') {
+            return Excel::download(new PurchasesExport($purchases), 'purchases_report_' . $startDate . '_to_' . $endDate . '.xlsx');
+        }
+
+        // PDF Generation
+        $pdf = Pdf::loadView('reports.pdf.purchases', compact('purchases', 'startDate', 'endDate', 'company'));
+        return $pdf->download('purchases_report_' . $startDate . '_to_' . $endDate . '.pdf');
     }
 }

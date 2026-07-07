@@ -7,10 +7,26 @@
         <p class="mt-1 text-sm text-slate-500">View your income, expenses, and net profit.</p>
     </div>
     
-    <form action="{{ route('reports.profit-loss') }}" method="GET" class="flex gap-2">
-        <input type="date" name="start_date" value="{{ $startDate }}" class="rounded-lg border-slate-200 text-sm">
-        <input type="date" name="end_date" value="{{ $endDate }}" class="rounded-lg border-slate-200 text-sm">
-        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">Filter</button>
+    <form action="{{ route('reports.profit-loss') }}" method="GET" class="flex flex-wrap items-center gap-2">
+        <input type="date" name="start_date" value="{{ $startDate }}" class="rounded-lg border-slate-200 text-sm px-3 py-2">
+        <span class="text-slate-400">to</span>
+        <input type="date" name="end_date" value="{{ $endDate }}" class="rounded-lg border-slate-200 text-sm px-3 py-2">
+        <button type="submit" class="p-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 ml-2" title="Filter">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        </button>
+        
+        <div class="flex items-center gap-2 ml-auto">
+            <button type="submit" name="format" value="pdf" formaction="{{ route('reports.profit-loss.export') }}" class="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-bold text-sm transition-colors border border-red-100">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                PDF
+            </button>
+            <button type="submit" name="format" value="excel" formaction="{{ route('reports.profit-loss.export') }}" class="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 font-bold text-sm transition-colors border border-emerald-100">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Excel
+            </button>
+        </div>
     </form>
 </div>
 
