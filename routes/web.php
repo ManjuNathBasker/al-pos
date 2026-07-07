@@ -85,29 +85,37 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/register-sessions', [\App\Http\Controllers\RegisterSessionController::class, 'index'])->name('register-sessions.index');
 
     // Restaurant Specific Routes
-    Route::get('/tables/map', [TableController::class, 'map'])->name('tables.map');
-    Route::resource('tables', TableController::class);
-    Route::resource('sections', SectionController::class);
+    Route::middleware('module:table_management')->group(function () {
+        Route::get('/tables/map', [TableController::class, 'map'])->name('tables.map');
+        Route::resource('tables', TableController::class);
+        Route::resource('sections', SectionController::class);
+    });
 
     // Kitchen Routes
-    Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
-    Route::patch('/kitchen/tickets/{ticket}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.tickets.status');
-    Route::patch('/kitchen/items/{item}/status', [KitchenController::class, 'updateItemStatus'])->name('kitchen.items.status');
+    Route::middleware('module:kitchen_display')->group(function () {
+        Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
+        Route::patch('/kitchen/tickets/{ticket}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.tickets.status');
+        Route::patch('/kitchen/items/{item}/status', [KitchenController::class, 'updateItemStatus'])->name('kitchen.items.status');
+    });
 
     // Waiter Routes
-    Route::get('/waiter', [WaiterController::class, 'index'])->name('waiter.index');
-    Route::get('/waiter/order/{table}', [WaiterController::class, 'createOrder'])->name('waiter.order');
-    Route::post('/waiter/order/{table}', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
-    Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
-    Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
-    Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
+    Route::middleware('module:waiter_panel')->group(function () {
+        Route::get('/waiter', [WaiterController::class, 'index'])->name('waiter.index');
+        Route::get('/waiter/order/{table}', [WaiterController::class, 'createOrder'])->name('waiter.order');
+        Route::post('/waiter/order/{table}', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
+        Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
+        Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
+        Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
+    });
 
     // Inventory Routes
-    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-    Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
-    Route::put('/inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
-    Route::get('/inventory/recipes', [InventoryController::class, 'recipes'])->name('inventory.recipes');
-    Route::post('/inventory/recipes/{product}', [InventoryController::class, 'updateRecipe'])->name('inventory.update-recipe');
+    Route::middleware('module:inventory_management')->group(function () {
+        Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+        Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+        Route::put('/inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
+        Route::get('/inventory/recipes', [InventoryController::class, 'recipes'])->name('inventory.recipes');
+        Route::post('/inventory/recipes/{product}', [InventoryController::class, 'updateRecipe'])->name('inventory.update-recipe');
+    });
 
     // Purchase & Supplier Routes
     Route::resource('suppliers', SupplierController::class);

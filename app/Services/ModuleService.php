@@ -75,7 +75,13 @@ class ModuleService
      */
     public function isActive(string $moduleKey, ?Company $company = null): bool
     {
-        $company = $company ?? session('active_company');
+        if (!$company) {
+            $companyId = session('company_id');
+            if (!$companyId) {
+                return false;
+            }
+            $company = Company::find($companyId);
+        }
         
         if (!$company) {
             return false;
