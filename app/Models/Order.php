@@ -116,6 +116,11 @@ class Order extends Model
         return $this->hasMany(KitchenTicket::class);
     }
 
+    public function cardTransactions()
+    {
+        return $this->hasMany(CardTransaction::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────
     public function scopePaid($query)
     {

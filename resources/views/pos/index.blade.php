@@ -1179,6 +1179,12 @@
                                 <span class="text-sm text-slate-600">Tax (8%):</span>
                                 <span class="font-mono font-bold text-slate-800" x-text="'$' + taxAmount.toFixed(2)" />
                             </div>
+                            <template x-if="cardServiceCharge > 0">
+                                <div class="flex justify-between">
+                                    <span class="text-sm text-slate-600">Card Srv Charge:</span>
+                                    <span class="font-mono font-bold text-slate-800" x-text="'+$' + cardServiceCharge.toFixed(2)" />
+                                </div>
+                            </template>
                             <div class="flex justify-between border-t border-slate-200 pt-2">
                                 <span class="font-bold text-slate-800">Grand Total:</span>
                                 <span class="text-2xl font-bold text-brand-600 price-tag" x-text="'$' + grandTotal.toFixed(2)" />
@@ -1214,20 +1220,15 @@
                             </div>
                         </div>
 
-                        {{-- Payment Methods Header & Split Toggle --}}
+                        {{-- Payment Methods Header --}}
                         <div class="border-t border-slate-100 pt-4 flex items-center justify-between mb-3">
                             <h3 class="text-sm font-semibold text-slate-700">Payment Method</h3>
-                            <button @click="toggleSplit()" 
-                                    :class="isSplit ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-500'"
-                                    class="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all">
-                                <span x-text="isSplit ? 'Split Enabled' : 'Split Bill'"></span>
-                            </button>
                         </div>
 
                         {{-- Payment Methods --}}
                         <div class="space-y-4">
                             <!-- Wallet UI -->
-                            <div x-show="!isSplit" class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
                                 <div>
                                     <p class="text-sm font-semibold text-slate-700">Wallet Balance</p>
                                     <p class="text-xs text-slate-500" x-text="'Available: $' + (customer.wallet_balance || 0).toFixed(2)"></p>
@@ -1238,38 +1239,57 @@
                                 </label>
                             </div>
 
-                            <div x-show="!isSplit" class="space-y-3">
-                                <template x-for="acc in paymentAccounts" :key="acc.id">
-                                    <div>
-                                        <label class="block text-sm text-slate-600 mb-1" x-text="acc.account_name"></label>
-                                        <div class="relative">
-                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                            <input type="number" x-model="payments[acc.id]" @input="recalcDynamicCash(acc.id)" step="0.01" 
-                                                   class="w-full pl-9 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:border-brand-500 outline-none font-mono font-bold text-slate-700 shadow-sm" />
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-
                             {{-- Split Payments List --}}
-                            <div x-show="isSplit" class="space-y-3">
+                            <div class="space-y-3">
                                 <template x-for="(p, index) in splitPayments" :key="index">
-                                    <div class="flex items-end gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                        <div class="flex-1 space-y-1">
-                                            <label class="text-[10px] font-black uppercase text-slate-400">Method</label>
-                                            <select x-model="p.method" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
-                                                <template x-for="acc in paymentAccounts" :key="acc.id">
-                                                    <option :value="acc.id" x-text="acc.account_name"></option>
+                                    <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                        <div class="flex items-end gap-2">
+                                            <div class="flex-1 space-y-1">
+                                                <label class="text-[10px] font-black uppercase text-slate-400">Method</label>
+                                                <select x-model="p.method" @change="p.card_id = ''; p.offer_id = ''; p.offers = [];" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
+                                                    <template x-for="acc in paymentAccounts" :key="acc.id">
+                                                        <option :value="acc.id" x-text="acc.account_name"></option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                            <div class="flex-1 space-y-1">
+                                                <label class="text-[10px] font-black uppercase text-slate-400">Amount</label>
+                                                <input type="number" x-model="p.amount" @input="if(cards.some(c => String(c.settlement_account_id) === String(p.method))) resolveOffersForSplitCard(index, p.card_id, p.amount)" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none font-mono" />
+                                            </div>
+                                            <button @click="removeSplit(index)" class="p-2 text-slate-300 hover:text-red-500">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- Split Card Selection -->
+                                        <template x-if="cards.some(c => String(c.settlement_account_id) === String(p.method))">
+                                            <div class="mt-2 space-y-2 p-2 bg-white rounded-lg border border-slate-150">
+                                                <div>
+                                                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Select Card</label>
+                                                    <select x-model="p.card_id" 
+                                                            @change="resolveOffersForSplitCard(index, p.card_id, p.amount)" 
+                                                            class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
+                                                        <option value="">Select Card</option>
+                                                        <template x-for="card in cards.filter(c => String(c.settlement_account_id) === String(p.method))" :key="card.id">
+                                                            <option :value="card.id" x-text="card.bank_name + ' - ' + card.card_network + ' (' + card.card_type + ')'"></option>
+                                                        </template>
+                                                    </select>
+                                                </div>
+                                                
+                                                <template x-if="p.card_id && p.offers && p.offers.length > 0">
+                                                    <div>
+                                                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Available Offer</label>
+                                                        <select x-model="p.offer_id" 
+                                                                @change="recalcTotal()" 
+                                                                class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
+                                                            <template x-for="offerItem in p.offers" :key="offerItem.offer.id">
+                                                                <option :value="offerItem.offer.id" x-text="offerItem.offer.name + ' (Discount: $' + parseFloat(offerItem.discount).toFixed(2) + ')'"></option>
+                                                            </template>
+                                                        </select>
+                                                    </div>
                                                 </template>
-                                            </select>
-                                        </div>
-                                        <div class="flex-1 space-y-1">
-                                            <label class="text-[10px] font-black uppercase text-slate-400">Amount</label>
-                                            <input type="number" x-model="p.amount" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none font-mono" />
-                                        </div>
-                                        <button @click="removeSplit(index)" class="p-2 text-slate-300 hover:text-red-500">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                        </button>
+                                            </div>
+                                        </template>
                                     </div>
                                 </template>
                                 <button @click="addSplit()" class="w-full py-2 border-2 border-dashed border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:border-brand-300 hover:text-brand-500 transition-all">+ Add Payment</button>
@@ -1346,8 +1366,11 @@ function posApp() {
         loadedTableName: '',
         loadedOrderTotal: 0,
         serviceType: 'retail', // retail (counter), dine_in, takeaway, delivery
-        isSplit: false,
+        isSplit: true,
         splitPayments: [],
+        cards: [],
+        cardDetails: {},
+        cardOffers: {},
         
         customer: {
             name: '',
@@ -1360,7 +1383,7 @@ function posApp() {
 
         get totalPaid() {
             if (this.isSplit) {
-                return this.splitPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                return this.splitPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) + this.walletAmount;
             }
             let sum = 0;
             for (let acc of this.paymentAccounts) {
@@ -1392,6 +1415,23 @@ function posApp() {
                 this.payments[primaryAccountId] = 0;
             } else {
                 this.payments[primaryAccountId] = (this.grandTotal - others).toFixed(2);
+            }
+        },
+
+        recalcCash() {
+            if (this.isSplit) {
+                if (this.splitPayments.length > 0) {
+                    let otherSplitSum = 0;
+                    for (let i = 1; i < this.splitPayments.length; i++) {
+                        otherSplitSum += parseFloat(this.splitPayments[i].amount) || 0;
+                    }
+                    let remaining = this.grandTotal - this.walletAmount - otherSplitSum;
+                    this.splitPayments[0].amount = Math.max(0, remaining).toFixed(2);
+                }
+            } else {
+                if (this.paymentAccounts.length === 0) return;
+                let primaryAccountId = this.paymentAccounts[0].id;
+                this.recalcDynamicCash(primaryAccountId);
             }
         },
 
@@ -1461,6 +1501,62 @@ function posApp() {
         get totalQty() { return this.cartItems.reduce((sum, i) => sum + i.qty, 0); },
         get cartSubtotal() { return this.cartItems.reduce((sum, i) => sum + (i.price * i.qty), 0); },
         
+        get cardDiscount() {
+            let cardDiscount = 0;
+            if (!this.isSplit) {
+                for (const [accountId, amount] of Object.entries(this.payments)) {
+                    const details = this.cardDetails[accountId];
+                    if (details && details.card_id) {
+                        const offers = this.cardOffers[accountId] || [];
+                        const selectedOffer = offers.find(o => String(o.offer.id) === String(details.offer_id));
+                        cardDiscount += selectedOffer ? parseFloat(selectedOffer.discount) : 0;
+                    }
+                }
+            } else {
+                this.splitPayments.forEach(p => {
+                    if (p.card_id) {
+                        const offers = p.offers || [];
+                        const selectedOffer = offers.find(o => String(o.offer.id) === String(p.offer_id));
+                        cardDiscount += selectedOffer ? parseFloat(selectedOffer.discount) : 0;
+                    }
+                });
+            }
+            return cardDiscount;
+        },
+
+        get cardServiceCharge() {
+            let cardServiceCharge = 0;
+            if (!this.isSplit) {
+                for (const [accountId, amount] of Object.entries(this.payments)) {
+                    const details = this.cardDetails[accountId];
+                    if (details && details.card_id) {
+                        const card = this.cards.find(c => String(c.id) === String(details.card_id));
+                        if (card) {
+                            const offers = this.cardOffers[accountId] || [];
+                            const selectedOffer = offers.find(o => String(o.offer.id) === String(details.offer_id));
+                            const offAmt = selectedOffer ? parseFloat(selectedOffer.discount) : 0;
+                            const taxableBase = Math.max(0, parseFloat(amount) - offAmt);
+                            cardServiceCharge += taxableBase * (parseFloat(card.service_charge) / 100);
+                        }
+                    }
+                }
+            } else {
+                this.splitPayments.forEach(p => {
+                    if (p.card_id) {
+                        const card = this.cards.find(c => String(c.id) === String(p.card_id));
+                        if (card) {
+                            const offers = p.offers || [];
+                            const selectedOffer = offers.find(o => String(o.offer.id) === String(p.offer_id));
+                            const offAmt = selectedOffer ? parseFloat(selectedOffer.discount) : 0;
+                            const taxableBase = Math.max(0, parseFloat(p.amount) - offAmt);
+                            cardServiceCharge += taxableBase * (parseFloat(card.service_charge) / 100);
+                        }
+                    }
+                });
+            }
+            return cardServiceCharge;
+        },
+
         get discountAmount() { 
             let total = this.cartSubtotal;
             let manualDiscount = 0;
@@ -1482,16 +1578,119 @@ function posApp() {
                 }
             }
 
-            return manualDiscount + couponDiscount;
+            return manualDiscount + couponDiscount + this.cardDiscount;
         },
 
         get taxAmount() { return Math.max(0, this.cartSubtotal - this.discountAmount) * 0.08; },
-        get grandTotal() { return Math.max(0, this.cartSubtotal - this.discountAmount + this.taxAmount); },
+        get grandTotal() { return Math.max(0, this.cartSubtotal - this.discountAmount + this.taxAmount + this.cardServiceCharge); },
 
-        init() {
+        recalcTotal() {
+            // Force redraw/recalculation of computed properties in Alpine
+        },
+
+        async init() {
             this.filteredProducts = Array.isArray(this.allProducts) ? [...this.allProducts] : [];
             this.setActiveCategoryName();
             this.startClock();
+            await this.fetchCards();
+        },
+
+        async fetchCards() {
+            try {
+                const res = await fetch('/api/cards');
+                this.cards = await res.json();
+            } catch (e) {
+                console.error('Failed to fetch cards', e);
+            }
+        },
+
+        async resolveOffersForCard(accountId, cardId, amount) {
+            if (!this.cardDetails[accountId]) {
+                this.cardDetails[accountId] = { card_id: '', offer_id: '' };
+            }
+            if (!cardId) {
+                this.cardDetails[accountId].card_id = '';
+                this.cardDetails[accountId].offer_id = '';
+                this.cardOffers[accountId] = [];
+                return;
+            }
+            try {
+                const res = await fetch('/api/pos/resolve-offers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        card_id: cardId,
+                        subtotal: parseFloat(amount) || 0,
+                        cart: Object.values(this.cart),
+                        customer_id: this.customer.id || null,
+                        branch_id: this.branchId || null
+                    })
+                });
+                const data = await res.json();
+                if (data.success && data.offers) {
+                    this.cardOffers[accountId] = data.offers;
+                    if (data.offers.length > 0) {
+                        this.cardDetails[accountId].offer_id = data.offers[0].offer.id;
+                    } else {
+                        this.cardDetails[accountId].offer_id = '';
+                    }
+                } else {
+                    this.cardOffers[accountId] = [];
+                    this.cardDetails[accountId].offer_id = '';
+                }
+            } catch (e) {
+                console.error(e);
+                this.cardOffers[accountId] = [];
+                this.cardDetails[accountId].offer_id = '';
+            }
+        },
+
+        async resolveOffersForSplitCard(index, cardId, amount) {
+            let p = this.splitPayments[index];
+            if (!p) return;
+            if (!cardId) {
+                p.card_id = '';
+                p.offer_id = '';
+                p.offers = [];
+                return;
+            }
+            try {
+                const res = await fetch('/api/pos/resolve-offers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        card_id: cardId,
+                        subtotal: parseFloat(amount) || 0,
+                        cart: Object.values(this.cart),
+                        customer_id: this.customer.id || null,
+                        branch_id: this.branchId || null
+                    })
+                });
+                const data = await res.json();
+                if (data.success && data.offers) {
+                    p.offers = data.offers;
+                    if (data.offers.length > 0) {
+                        p.offer_id = data.offers[0].offer.id;
+                    } else {
+                        p.offer_id = '';
+                    }
+                } else {
+                    p.offers = [];
+                    p.offer_id = '';
+                }
+            } catch (e) {
+                console.error(e);
+                p.offers = [];
+                p.offer_id = '';
+            }
         },
 
         startClock() {
@@ -1655,15 +1854,28 @@ function posApp() {
         // Initialize payments when order loads or modal opens
         initPayments() {
             this.payments = {};
-            if(this.paymentAccounts.length > 0) {
-                this.payments[this.paymentAccounts[0].id] = this.grandTotal.toFixed(2);
+            this.cardDetails = {};
+            this.cardOffers = {};
+            
+            // Find cash account or default to the first account
+            let cashAcc = this.paymentAccounts.find(acc => acc.account_name.toLowerCase().includes('cash'));
+            let defaultAccId = cashAcc ? cashAcc.id : (this.paymentAccounts[0]?.id || '');
+            
+            if(this.paymentAccounts.length > 0 && defaultAccId) {
+                this.payments[defaultAccId] = this.grandTotal.toFixed(2);
             }
-            this.isSplit = false;
-            if(this.paymentAccounts.length > 0) {
-                this.splitPayments = [{ method: this.paymentAccounts[0].id, amount: this.grandTotal.toFixed(2) }];
+            this.isSplit = true;
+            if(defaultAccId) {
+                this.splitPayments = [{ method: defaultAccId, amount: (this.grandTotal - this.walletAmount).toFixed(2), card_id: '', offer_id: '', offers: [] }];
             } else {
                 this.splitPayments = [];
             }
+            // Initialize cardDetails for card accounts
+            this.paymentAccounts.forEach(acc => {
+                if (this.cards.some(c => String(c.settlement_account_id) === String(acc.id))) {
+                    this.cardDetails[acc.id] = { card_id: '', offer_id: '' };
+                }
+            });
         },
         
         checkout() {
@@ -1676,7 +1888,6 @@ function posApp() {
             this.useWallet = false;
         },
 
-        // CHANGE #8: Updated confirmOrder function
         async confirmOrder() {
             if (this.serviceType === 'delivery') {
                 if (!this.customer.name || !this.customer.phone || !this.customer.address) {
@@ -1684,8 +1895,6 @@ function posApp() {
                     return;
                 }
             } else {
-                // Non-delivery orders might still want name/phone for the bill, but let's keep it optional if preferred
-                // or keep the previous requirement if the user wants it.
                 if (!this.customer.name || !this.customer.phone) {
                     this.showToast('Name and Phone are required', 'error');
                     return;
@@ -1702,6 +1911,34 @@ function posApp() {
             const snapshotTax = this.taxAmount;
             const snapshotTotal = this.grandTotal;
             const snapshotCustomer = { name: this.customer.name, phone: this.customer.phone };
+
+            // Map card_details for single payment mode
+            const cardDetailsPayload = {};
+            if (!this.isSplit) {
+                for (const [accountId, details] of Object.entries(this.cardDetails)) {
+                    if (details.card_id) {
+                        cardDetailsPayload[accountId] = {
+                            card_id: details.card_id,
+                            offer_id: details.offer_id || null
+                        };
+                    }
+                }
+            }
+
+            // Map split payments, adding card_details to each split payment
+            const splitPaymentsPayload = this.splitPayments.map(p => {
+                const mapped = {
+                    method: p.method,
+                    amount: parseFloat(p.amount) || 0
+                };
+                if (p.card_id) {
+                    mapped.card_details = {
+                        card_id: p.card_id,
+                        offer_id: p.offer_id || null
+                    };
+                }
+                return mapped;
+            });
 
             try {
                 const res = await fetch('{{ route("pos.checkout") }}', {
@@ -1720,23 +1957,23 @@ function posApp() {
                         coupon_id: this.appliedCoupon ? this.appliedCoupon.id : null,
                         note: this.orderNote,
                         total: this.grandTotal,
-                        cart: this.cart,
+                        cart: this.cartItems, // cartItems array expected by InventoryService
                         order_id: this.loadedOrderId,
                         customer_name: this.customer.name,
                         customer_phone: this.customer.phone,
                         billing_address: this.customer.address,
                         payment_details: this.payments, 
+                        card_details: cardDetailsPayload,
                         use_wallet: this.useWallet, 
                         wallet_amount: this.walletAmount,
                         is_split: this.isSplit,
-                        split_payments: this.splitPayments
+                        split_payments: splitPaymentsPayload
                     }),
                 });
 
                 const data = await res.json();
                 
                 if (data.success) {
-                    // Store receipt data from backend response
                     this.lastOrderId = data.order_id;
                     this.lastOrderTotal = data.total || snapshotTotal;
                 } else {
@@ -1745,7 +1982,6 @@ function posApp() {
                     return;
                 }
             } catch (e) {
-                // Network error — still show a local order ID so the bill works
                 this.lastOrderId = 'LOCAL-' + Date.now();
                 this.lastOrderTotal = snapshotTotal;
             }
@@ -1833,7 +2069,9 @@ function posApp() {
         },
 
         addSplit() {
-            this.splitPayments.push({ method: 'cash', amount: 0 });
+            let cashAcc = this.paymentAccounts.find(acc => acc.account_name.toLowerCase().includes('cash'));
+            let defaultAccId = cashAcc ? cashAcc.id : (this.paymentAccounts[0]?.id || '');
+            this.splitPayments.push({ method: defaultAccId, amount: '0.00', card_id: '', offer_id: '', offers: [] });
         },
 
         removeSplit(index) {

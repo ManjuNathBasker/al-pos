@@ -68,12 +68,87 @@ class AccountingService
                 } else if (is_numeric($payment->payment_method)) {
                     $account = Account::find($payment->payment_method);
                     if ($account) {
-                        JournalEntryItem::create([
-                            'journal_entry_id' => $journal->id,
-                            'account_id' => $account->id,
-                            'debit_amount' => $payment->amount,
-                            'credit_amount' => 0,
-                        ]);
+                        // Check if this payment corresponds to a Card Transaction
+                        $cardTx = \App\Models\CardTransaction::where('order_id', $order->id)
+                            ->whereHas('card', function($q) use ($account) {
+                                $q->where('settlement_account_id', $account->id);
+                            })->first();
+
+                        if ($cardTx) {
+                            // Card Receivable account
+                            $cardReceivableAccount = $this->getSystemAccount($companyId, 'Card Receivable', 'Asset', '1050');
+                            JournalEntryItem::create([
+                                'journal_entry_id' => $journal->id,
+                                'account_id' => $cardReceivableAccount->id,
+                                'debit_amount' => $cardTx->net_settlement_amount,
+                                'credit_amount' => 0,
+                            ]);
+
+                            // Bank Charges (MDR)
+                            $taxableBase = max(0, $cardTx->gross_amount - $cardTx->discount_amount);
+                            $mdrAmount = ($taxableBase + $cardTx->service_charge_amount) * ($cardTx->card->mdr / 100);
+                            if ($mdrAmount > 0) {
+                                $bankChargesAccount = $this->getSystemAccount($companyId, 'Bank Charges', 'Expense', '5100');
+                                JournalEntryItem::create([
+                                    'journal_entry_id' => $journal->id,
+                                    'account_id' => $bankChargesAccount->id,
+                                    'debit_amount' => $mdrAmount,
+                                    'credit_amount' => 0,
+                                ]);
+                            }
+
+                            // Processing Charges
+                            if ($cardTx->processing_fee_amount > 0) {
+                                $processingChargesAccount = $this->getSystemAccount($companyId, 'Processing Charges', 'Expense', '5200');
+                                JournalEntryItem::create([
+                                    'journal_entry_id' => $journal->id,
+                                    'account_id' => $processingChargesAccount->id,
+                                    'debit_amount' => $cardTx->processing_fee_amount,
+                                    'credit_amount' => 0,
+                                ]);
+                            }
+
+                            // Offer Expense (Merchant Discount Share)
+                            if ($cardTx->merchant_discount_share > 0) {
+                                $offerExpenseAccount = $this->getSystemAccount($companyId, 'Offer Expense', 'Expense', '5300');
+                                JournalEntryItem::create([
+                                    'journal_entry_id' => $journal->id,
+                                    'account_id' => $offerExpenseAccount->id,
+                                    'debit_amount' => $cardTx->merchant_discount_share,
+                                    'credit_amount' => 0,
+                                ]);
+                            }
+
+                            // Cashback Expense
+                            if ($cardTx->cashback_amount > 0) {
+                                $cashbackExpenseAccount = $this->getSystemAccount($companyId, 'Cashback Expense', 'Expense', '5400');
+                                JournalEntryItem::create([
+                                    'journal_entry_id' => $journal->id,
+                                    'account_id' => $cashbackExpenseAccount->id,
+                                    'debit_amount' => $cardTx->cashback_amount,
+                                    'credit_amount' => 0,
+                                ]);
+                            }
+
+                            // Service Charge Income
+                            if ($cardTx->service_charge_amount > 0) {
+                                $serviceChargeIncomeAccount = $this->getSystemAccount($companyId, 'Service Charge Income', 'Income', '4100');
+                                JournalEntryItem::create([
+                                    'journal_entry_id' => $journal->id,
+                                    'account_id' => $serviceChargeIncomeAccount->id,
+                                    'debit_amount' => 0,
+                                    'credit_amount' => $cardTx->service_charge_amount,
+                                ]);
+                            }
+                        } else {
+                            // Standard bank payment
+                            JournalEntryItem::create([
+                                'journal_entry_id' => $journal->id,
+                                'account_id' => $account->id,
+                                'debit_amount' => $payment->amount,
+                                'credit_amount' => 0,
+                            ]);
+                        }
                     }
                 } else {
                     // Legacy support

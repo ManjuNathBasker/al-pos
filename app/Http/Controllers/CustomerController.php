@@ -23,4 +23,22 @@ class CustomerController extends Controller
 
         return view('customers.index', compact('customers'));
     }
+
+    public function show(Customer $customer)
+    {
+        $orders = $customer->orders()
+            ->with(['items', 'payments', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        // Calculate statistics
+        $stats = [
+            'total_orders' => $customer->orders()->count(),
+            'total_spent' => $customer->orders()->where('status', 'paid')->sum('total_amount'),
+            'avg_order_value' => $customer->orders()->where('status', 'paid')->avg('total_amount') ?? 0,
+            'last_order_date' => $customer->orders()->latest()->value('created_at'),
+        ];
+
+        return view('customers.show', compact('customer', 'orders', 'stats'));
+    }
 }
