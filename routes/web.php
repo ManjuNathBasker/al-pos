@@ -149,6 +149,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/api/cards', [App\Http\Controllers\CardController::class, 'getActiveCards']);
     Route::post('/api/pos/resolve-offers', [App\Http\Controllers\BankOfferController::class, 'resolveOffers']);
     Route::get('/reports/cards', [App\Http\Controllers\CardReportController::class, 'index'])->name('reports.cards');
+    Route::get('/reports/service-charges', [App\Http\Controllers\ServiceChargeReportController::class, 'index'])->name('reports.service-charges');
+    Route::get('/reports/service-charges/export', [App\Http\Controllers\ServiceChargeReportController::class, 'export'])->name('reports.service-charges.export');
 });
 
 require __DIR__.'/auth.php';
