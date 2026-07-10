@@ -141,6 +141,14 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/reports/profit-loss/export', [App\Http\Controllers\FinancialReportController::class, 'exportProfitLoss'])->name('reports.profit-loss.export');
     Route::get('/reports/balance-sheet', [App\Http\Controllers\FinancialReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
     Route::get('/reports/balance-sheet/export', [App\Http\Controllers\FinancialReportController::class, 'exportBalanceSheet'])->name('reports.balance-sheet.export');
+
+    // Card Management & Bank Offers & Settlements
+    Route::resource('cards', App\Http\Controllers\CardController::class);
+    Route::resource('offers', App\Http\Controllers\BankOfferController::class);
+    Route::resource('settlements', App\Http\Controllers\BankSettlementController::class);
+    Route::get('/api/cards', [App\Http\Controllers\CardController::class, 'getActiveCards']);
+    Route::post('/api/pos/resolve-offers', [App\Http\Controllers\BankOfferController::class, 'resolveOffers']);
+    Route::get('/reports/cards', [App\Http\Controllers\CardReportController::class, 'index'])->name('reports.cards');
 });
 
 require __DIR__.'/auth.php';

@@ -147,21 +147,145 @@
                     <span class="font-medium text-slate-900">{{ $order->user->name ?? 'System' }}</span>
                 </div>
                 <div>
+                    <span class="block text-slate-500">Service Type</span>
+                    <span class="font-medium text-slate-900">{{ ucfirst(str_replace('_', ' ', $order->service_type ?? 'retail')) }}</span>
+                </div>
+                <div>
                     <span class="block text-slate-500">Status</span>
-                    <span class="font-medium text-slate-900">{{ ucfirst($order->status) }}</span>
+                    @if($order->status == 'paid')
+                        <span class="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-600/20">Paid</span>
+                    @elseif($order->status == 'cancelled')
+                        <span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-600/20">Cancelled</span>
+                    @else
+                        <span class="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-500/10">{{ ucfirst($order->status) }}</span>
+                    @endif
                 </div>
             </div>
         </div>
 
-        @if($order->customer)
+        {{-- Payment Details --}}
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <h3 class="font-semibold text-slate-800">Payment Details</h3>
+            </div>
+            <div class="p-6 space-y-3 text-sm">
+                @if($order->payments && $order->payments->count() > 0)
+                    @foreach($order->payments as $payment)
+                    <div class="flex items-center justify-between py-2 {{ !$loop->last ? 'border-b border-slate-100' : '' }}">
+                        <div class="flex items-center gap-2.5">
+                            @if($payment->payment_method === 'wallet')
+                                <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                </div>
+                                <span class="font-medium text-slate-700">Wallet</span>
+                            @elseif(is_numeric($payment->payment_method))
+                                @php $accName = $accountNames[$payment->payment_method] ?? 'Account #' . $payment->payment_method; @endphp
+                                <div class="w-8 h-8 rounded-lg {{ str_contains(strtolower($accName), 'cash') ? 'bg-emerald-100' : 'bg-blue-100' }} flex items-center justify-center">
+                                    @if(str_contains(strtolower($accName), 'cash'))
+                                        <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                    @else
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                    @endif
+                                </div>
+                                <span class="font-medium text-slate-700">{{ $accName }}</span>
+                            @else
+                                <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <span class="font-medium text-slate-700">{{ ucfirst($payment->payment_method) }}</span>
+                            @endif
+                        </div>
+                        <span class="font-bold text-slate-900">${{ number_format($payment->amount, 2) }}</span>
+                    </div>
+                    @endforeach
+
+                    {{-- Total Paid --}}
+                    <div class="flex justify-between pt-3 mt-2 border-t border-slate-200">
+                        <span class="font-semibold text-slate-700">Total Paid</span>
+                        <span class="font-bold text-slate-900">${{ number_format($order->payments->sum('amount'), 2) }}</span>
+                    </div>
+
+                    @if($order->change_returned > 0)
+                    <div class="flex justify-between text-amber-600">
+                        <span class="font-medium">Change Returned</span>
+                        <span class="font-bold">${{ number_format($order->change_returned, 2) }}</span>
+                    </div>
+                    @endif
+                @else
+                    {{-- Fallback for legacy orders without payment records --}}
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Payment Method</span>
+                        <span class="font-medium text-slate-900">{{ ucfirst($order->payment_method ?? 'N/A') }}</span>
+                    </div>
+                    @if($order->wallet_used > 0)
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Wallet Used</span>
+                        <span class="font-medium text-purple-700">${{ number_format($order->wallet_used, 2) }}</span>
+                    </div>
+                    @endif
+                @endif
+            </div>
+        </div>
+
+        {{-- Card Transaction Details (if any) --}}
+        @if($order->cardTransactions && $order->cardTransactions->count() > 0)
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <h3 class="font-semibold text-slate-800">Card Transactions</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                @foreach($order->cardTransactions as $cardTx)
+                <div class="text-sm space-y-2 {{ !$loop->last ? 'pb-4 border-b border-slate-100' : '' }}">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Card</span>
+                        <span class="font-medium text-slate-900">{{ $cardTx->card->bank_name ?? $cardTx->bank_name }} — {{ $cardTx->card->card_network ?? '' }} ({{ $cardTx->card->card_type ?? '' }})</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Gross Amount</span>
+                        <span class="font-medium text-slate-900">${{ number_format($cardTx->gross_amount, 2) }}</span>
+                    </div>
+                    @if($cardTx->discount_amount > 0)
+                    <div class="flex justify-between text-green-600">
+                        <span>Discount</span>
+                        <span class="font-medium">-${{ number_format($cardTx->discount_amount, 2) }}</span>
+                    </div>
+                    @endif
+                    @if($cardTx->service_charge_amount > 0)
+                    <div class="flex justify-between text-amber-600">
+                        <span>Service Charge</span>
+                        <span class="font-medium">+${{ number_format($cardTx->service_charge_amount, 2) }}</span>
+                    </div>
+                    @endif
+                    <div class="flex justify-between font-semibold">
+                        <span class="text-slate-700">Net Settlement</span>
+                        <span class="text-slate-900">${{ number_format($cardTx->net_settlement_amount, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Status</span>
+                        @if($cardTx->settlement_status === 'completed')
+                            <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-600/20">Settled</span>
+                        @else
+                            <span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">{{ ucfirst($cardTx->settlement_status ?? 'Pending') }}</span>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        @if($order->customer)
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                 <h3 class="font-semibold text-slate-800">Customer Information</h3>
+                <a href="{{ route('customers.show', $order->customer) }}" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+                    View Profile →
+                </a>
             </div>
             <div class="p-6 space-y-4 text-sm">
                 <div>
                     <span class="block text-slate-500">Customer Name</span>
-                    <span class="font-medium text-slate-900">{{ $order->customer->name }}</span>
+                    <a href="{{ route('customers.show', $order->customer) }}" class="font-medium text-indigo-600 hover:text-indigo-700 hover:underline">{{ $order->customer->name }}</a>
                 </div>
                 <div>
                     <span class="block text-slate-500">Phone</span>
@@ -169,7 +293,17 @@
                 </div>
                 <div>
                     <span class="block text-slate-500">Wallet Balance</span>
-                    <span class="font-medium text-slate-900">${{ number_format($order->customer->wallet_balance, 2) }}</span>
+                    <span class="inline-flex items-center rounded-md {{ $order->customer->wallet_balance > 0 ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-slate-50 text-slate-600 ring-slate-500/10' }} px-2.5 py-0.5 text-sm font-medium ring-1 ring-inset">
+                        ${{ number_format($order->customer->wallet_balance, 2) }}
+                    </span>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <a href="{{ route('customers.show', $order->customer) }}" class="inline-flex items-center justify-center w-full rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        </svg>
+                        View Order History
+                    </a>
                 </div>
             </div>
         </div>

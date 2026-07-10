@@ -37,8 +37,13 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $order->load(['items.product', 'user', 'customer']);
-        return view('orders.show', compact('order'));
+        $order->load(['items.product', 'user', 'customer', 'payments', 'cardTransactions.card']);
+
+        // Build a lookup map of account IDs to account names for resolving payment methods
+        $accountIds = $order->payments->filter(fn($p) => is_numeric($p->payment_method))->pluck('payment_method')->unique();
+        $accountNames = \App\Models\Account::whereIn('id', $accountIds)->pluck('account_name', 'id');
+
+        return view('orders.show', compact('order', 'accountNames'));
     }
 
     public function cancel(Order $order)

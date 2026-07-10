@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Account;
 
 class Company extends Model
 {
@@ -11,6 +12,33 @@ class Company extends Model
     protected $casts = [
         'settings' => 'array',
     ];
+
+    /**
+     * Boot the model and register lifecycle hooks.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Company $company) {
+            // Auto-create a default Cash account for POS usage.
+            // This is the system account used for register opening balance,
+            // cash sales tracking, and the default POS payment method.
+            Account::firstOrCreate(
+                [
+                    'company_id' => $company->id,
+                    'account_name' => 'Cash',
+                ],
+                [
+                    'account_code' => '1000',
+                    'account_type' => 'Asset',
+                    'opening_balance' => 0.00,
+                    'current_balance' => 0.00,
+                    'status' => true,
+                    'is_system' => true,
+                    'show_in_pos' => true,
+                ]
+            );
+        });
+    }
 
     /**
      * Get the owner of the company.

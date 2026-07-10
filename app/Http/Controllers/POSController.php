@@ -302,14 +302,83 @@ class POSController extends Controller
                 ['name' => $request->customer_name, 'wallet_balance' => 0]
             );
 
-            // Payment logic (Dynamic Payments via Chart of Accounts)
+            // Track card discounts and service charges
+            $totalCardDiscount = 0;
+            $totalCardServiceCharge = 0;
+            $cardTransactionsData = [];
             $payments = $request->payment_details ?? [];
+
+            // 1. Process Single Card Payments
+            if (!$request->is_split) {
+                foreach ($payments as $accountId => $amount) {
+                    $details = $request->input("card_details.{$accountId}");
+                    if ($details && !empty($details['card_id'])) {
+                        $amountVal = (float) $amount;
+                        if ($amountVal > 0) {
+                            $cardTx = $this->resolveAndPrepareCardTransaction($details, $amountVal, $customer, $request);
+                            if ($cardTx) {
+                                $totalCardDiscount += $cardTx['discount_amount'];
+                                $totalCardServiceCharge += $cardTx['service_charge_amount'];
+                                $cardTransactionsData[] = $cardTx;
+                            }
+                        }
+                    }
+                }
+            } 
+            // 2. Process Split Card Payments
+            else if ($request->is_split && is_array($request->split_payments)) {
+                foreach ($request->split_payments as $p) {
+                    $details = $p['card_details'] ?? null;
+                    if ($details && !empty($details['card_id'])) {
+                        $amountVal = (float) $p['amount'];
+                        if ($amountVal > 0) {
+                            $cardTx = $this->resolveAndPrepareCardTransaction($details, $amountVal, $customer, $request);
+                            if ($cardTx) {
+                                $totalCardDiscount += $cardTx['discount_amount'];
+                                $totalCardServiceCharge += $cardTx['service_charge_amount'];
+                                $cardTransactionsData[] = $cardTx;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Calculate manual discount amount
+            $manualDiscount = 0;
+            if ($request->discount_type === 'percent') {
+                $manualDiscount = $request->subtotal * (($request->discount_percent ?? 0) / 100);
+            } else {
+                $manualDiscount = (float) ($request->discount_percent ?? 0);
+            }
+
+            // Coupon discount (if coupon used)
+            $couponDiscount = 0;
+            if ($request->coupon_id) {
+                $coupon = Coupon::find($request->coupon_id);
+                if ($coupon) {
+                    if ($coupon->type === 'percent') {
+                        $couponDiscount = $request->subtotal * ($coupon->value / 100);
+                    } else {
+                        $couponDiscount = $coupon->value;
+                    }
+                }
+            }
+
+            // Total discount on order = Manual + Coupon + Card Offer Discounts
+            $totalDiscountAmount = $manualDiscount + $couponDiscount + $totalCardDiscount;
             
+            // Adjust tax amount
+            $taxableAmount = max(0, $request->subtotal - $totalDiscountAmount);
+            $taxAmount = $taxableAmount * 0.08;
+
+            // Final Order Total = Subtotal - Total Discount + Tax + Card Service Charges
+            $finalTotalAmount = max(0, $request->subtotal - $totalDiscountAmount + $taxAmount + $totalCardServiceCharge);
+
             $useWallet = filter_var($request->use_wallet, FILTER_VALIDATE_BOOLEAN);
             $walletUsed = 0;
             
             if ($useWallet) {
-                $walletUsed = min($customer->wallet_balance, $request->total);
+                $walletUsed = min($customer->wallet_balance, $finalTotalAmount);
             }
 
             $totalPaid = $walletUsed;
@@ -322,8 +391,15 @@ class POSController extends Controller
                 }
             }
 
-            $changeReturned = max(0, $totalPaid - $request->total);
-            $balanceDue = max(0, $request->total - $totalPaid);
+            if ($request->is_split && is_array($request->split_payments)) {
+                $totalPaid = $walletUsed;
+                foreach ($request->split_payments as $p) {
+                    $totalPaid += (float) $p['amount'];
+                }
+            }
+
+            $changeReturned = max(0, $totalPaid - $finalTotalAmount);
+            $balanceDue = max(0, $finalTotalAmount - $totalPaid);
 
             // Create or Update Order
             $orderData = [
@@ -331,14 +407,14 @@ class POSController extends Controller
                 'customer_id'      => $customer->id,
                 'service_type'     => $request->service_type ?? 'retail',
                 'delivery_status'  => ($request->service_type === 'delivery') ? 'pending' : null,
-                'discount_amount'  => $request->discount_percent ?? 0,
-                'discount_type'    => $request->discount_type ?? 'percent',
-                'discount_value'   => $request->discount_percent ?? 0,
+                'discount_amount'  => $totalDiscountAmount,
+                'discount_type'    => 'fixed',
+                'discount_value'   => $totalDiscountAmount,
                 'coupon_id'        => $request->coupon_id,
                 'note'             => $request->note,
                 'subtotal'         => $request->subtotal,
-                'tax_amount'       => $request->tax_amount,
-                'total_amount'     => $request->total,
+                'tax_amount'       => $taxAmount,
+                'total_amount'     => $finalTotalAmount,
                 'wallet_used'      => $walletUsed,
                 'change_returned'  => $changeReturned,
                 'total_paid'       => $totalPaid,
@@ -365,8 +441,6 @@ class POSController extends Controller
                             if ($item->orderItem) {
                                 $item->orderItem->update(['kitchen_status' => 'served']);
                             }
-                            // KitchenTicketItem status enum only allows pending/preparing/ready
-                            // So we don't update its status to 'served' to avoid DB errors
                         }
                     });
 
@@ -388,6 +462,14 @@ class POSController extends Controller
                         'amount' => $p['amount'],
                     ]);
                 }
+                // Also record wallet payment for split orders
+                if ($walletUsed > 0) {
+                    $order->payments()->create([
+                        'company_id' => $order->company_id,
+                        'payment_method' => 'wallet',
+                        'amount' => $walletUsed,
+                    ]);
+                }
             } else {
                 // Dynamic regular payments
                 foreach ($dynamicPayments as $accountId => $amount) {
@@ -404,6 +486,13 @@ class POSController extends Controller
                         'amount' => $walletUsed
                     ]);
                 }
+            }
+
+            // Save card transactions and link to order
+            foreach ($cardTransactionsData as $txData) {
+                $txData['order_id'] = $order->id;
+                $txData['company_id'] = $order->company_id;
+                \App\Models\CardTransaction::create($txData);
             }
 
             // If coupon used, increment count
@@ -501,5 +590,77 @@ class POSController extends Controller
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Order failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    private function resolveAndPrepareCardTransaction($details, $amount, $customer, $request)
+    {
+        $cardId = $details['card_id'];
+        $card = \App\Models\Card::find($cardId);
+        if (!$card) return null;
+
+        $discount = 0;
+        $cashback = 0;
+        $merchantShare = 0;
+        $bankShare = 0;
+        $offerId = null;
+
+        // If offer is specified, resolve it
+        if (!empty($details['offer_id'])) {
+            $offerService = app(\App\Services\BankOfferService::class);
+            $cart = $request->input('cart') ?? [];
+            $branchId = $request->input('branch_id');
+            
+            $eligibleOffers = $offerService->getEligibleOffers(
+                $cardId,
+                $amount,
+                $cart,
+                $customer->id,
+                $branchId
+            );
+
+            // Find the selected offer in the eligible ones
+            $selected = collect($eligibleOffers)->first(fn($o) => $o['offer']->id == $details['offer_id']);
+            if ($selected) {
+                $discount = (float) $selected['discount'];
+                $cashback = (float) $selected['cashback'];
+                $merchantShare = (float) $selected['merchant_share'];
+                $bankShare = (float) $selected['bank_share'];
+                $offerId = $selected['offer']->id;
+
+                // Increment used count
+                $selected['offer']->increment('used_count');
+            }
+        }
+
+        // Calculate service charge on taxable base (amount after discount)
+        $taxableBase = max(0, $amount - $discount);
+        $serviceCharge = $taxableBase * ($card->service_charge / 100);
+        $processingFee = (float) $card->processing_fee;
+
+        // MDR is calculated on the swiped amount (taxableBase + serviceCharge)
+        $mdrAmount = ($taxableBase + $serviceCharge) * ($card->mdr / 100);
+
+        // Net Settlement = Swipe Amount + Bank Discount Share - MDR - Processing Fee
+        $netSettlement = ($taxableBase + $serviceCharge) + $bankShare - $mdrAmount - $processingFee;
+
+        return [
+            'card_id'                 => $card->id,
+            'customer_id'             => $customer->id,
+            'branch_id'               => $request->input('branch_id'),
+            'bank_name'               => $card->bank_name,
+            'card_network'            => $card->card_network,
+            'card_type'               => $card->card_type,
+            'gross_amount'            => $amount,
+            'discount_amount'         => $discount,
+            'cashback_amount'         => $cashback,
+            'service_charge_amount'   => $serviceCharge,
+            'processing_fee_amount'   => $processingFee,
+            'merchant_discount_share' => $merchantShare,
+            'bank_discount_share'     => $bankShare,
+            'net_settlement_amount'   => $netSettlement,
+            'settlement_days'         => $card->settlement_days,
+            'settlement_status'       => 'pending',
+            'bank_offer_id'           => $offerId,
+        ];
     }
 }
