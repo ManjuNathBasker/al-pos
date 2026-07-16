@@ -34,7 +34,7 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'company_name' => ['required', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = User::create([
@@ -45,7 +45,7 @@ class RegisteredUserController extends Controller
 
         // 1. Create the Company
         $company = \App\Models\Company::create([
-            'name' => $request->company_name,
+            'name' => $request->company_name ?? ($request->name . ' Company'),
             'email' => $request->email,
             'owner_id' => $user->id,
         ]);
@@ -55,6 +55,7 @@ class RegisteredUserController extends Controller
 
         // 3. Assign Owner Role (Global - without team scoping)
         setPermissionsTeamId(null);
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
         $user->assignRole('Owner');
 
         // 4. Set session company_id and team context for immediate access
