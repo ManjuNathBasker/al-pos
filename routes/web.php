@@ -41,9 +41,9 @@ Route::get('/menu/{token}/status', [GuestOrderController::class, 'getStatus'])->
 Route::delete('/menu/{token}/item/{item}', [GuestOrderController::class, 'removeItem'])->name('guest.remove-item');
 Route::post('/menu/{token}/cancel', [GuestOrderController::class, 'cancelOrder'])->name('guest.cancel');
 
-Route::get('/dashboard', function () {
-    return redirect()->route('pos.index');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified', 'tenant'])
+    ->name('dashboard');
 
 Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/companies/switch/{company}', [CompanyController::class, 'switch'])->name('companies.switch');
