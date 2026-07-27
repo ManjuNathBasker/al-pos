@@ -261,6 +261,8 @@ class POSController extends Controller
 
     public function checkout(Request $request)
     {
+        file_put_contents(public_path('checkout_debug.json'), json_encode($request->all(), JSON_PRETTY_PRINT));
+        \Log::info('Checkout Payload:', $request->all());
         $request->validate([
             'order_id'         => 'nullable|exists:orders,id',
             'discount_percent' => 'nullable|numeric|min:0',
@@ -288,11 +290,8 @@ class POSController extends Controller
             return response()->json(['success' => false, 'message' => $stockValidation['message']], 422);
         }
 
-        // Validate Register Session
+        // Fetch open register session for cash shift mode (if any)
         $openSession = \App\Models\RegisterSession::openForUser(auth()->id())->first();
-        if (!$openSession && empty($request->order_id)) {
-            return response()->json(['success' => false, 'message' => 'Please open a register session before processing sales.'], 422);
-        }
 
         DB::beginTransaction();
         try {
@@ -572,6 +571,60 @@ class POSController extends Controller
 
             // Generate Accounting Entries
             app(\App\Services\AccountingService::class)->recordSale($order);
+
+            // ── Cash Transactions Logic (For Cash Shifts) ──
+            if ($openSession) {
+                $totalCashCollected = 0;
+                
+                // For dynamic payments
+                if (!$request->is_split) {
+                    foreach ($dynamicPayments as $accountId => $amount) {
+                        $acc = \App\Models\Account::find($accountId);
+                        if ($acc && stripos($acc->account_name, 'cash') !== false) {
+                            $totalCashCollected += (float) $amount;
+                        }
+                    }
+                } else if (is_array($request->split_payments)) {
+                    // For split payments
+                    foreach ($request->split_payments as $p) {
+                        if (is_numeric($p['method'])) {
+                            $acc = \App\Models\Account::find($p['method']);
+                            if ($acc && stripos($acc->account_name, 'cash') !== false) {
+                                $totalCashCollected += (float) $p['amount'];
+                            }
+                        } else if (strtolower($p['method']) === 'cash') {
+                            $totalCashCollected += (float) $p['amount'];
+                        }
+                    }
+                }
+                
+                // Adjust for change returned (deducts physical cash given back)
+                if ($changeReturned > 0) {
+                    // If the change returned was essentially given from cash drawer
+                    $totalCashCollected -= $changeReturned;
+                }
+                
+                if ($totalCashCollected > 0) {
+                    \App\Models\CashTransaction::create([
+                        'register_session_id' => $openSession->id,
+                        'type' => 'CASH_SALE',
+                        'amount' => $totalCashCollected,
+                        'payment_method' => 'Cash',
+                        'description' => 'Payment for Order ' . $order->order_number,
+                        'created_by' => auth()->id(),
+                    ]);
+                } else if ($totalCashCollected < 0) {
+                    // In a rare scenario where change given is more than cash received (due to wallet split issue etc.)
+                    \App\Models\CashTransaction::create([
+                        'register_session_id' => $openSession->id,
+                        'type' => 'CASH_REFUND',
+                        'amount' => abs($totalCashCollected),
+                        'payment_method' => 'Cash',
+                        'description' => 'Change returned for Order ' . $order->order_number,
+                        'created_by' => auth()->id(),
+                    ]);
+                }
+            }
 
             $this->saveCart([]);
             DB::commit();

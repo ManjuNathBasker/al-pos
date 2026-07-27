@@ -57,17 +57,24 @@ class RegisterSession extends Model
                      ->where('status', 'open');
     }
 
+    public function cashTransactions()
+    {
+        return $this->hasMany(CashTransaction::class, 'register_session_id');
+    }
+
     /**
-     * Calculate the expected closing amount dynamically based on cash orders.
+     * Calculate the expected closing amount dynamically based on cash transactions ledger.
      */
     public function calculateExpectedAmount()
     {
-        // Only count orders placed during this session that were paid in cash.
-        // Assuming Order has 'payment_method' and 'total_amount'.
-        $cashSales = $this->orders()
-                          ->where('payment_method', 'cash')
-                          ->sum('total_amount');
+        $additions = $this->cashTransactions()
+                          ->whereIn('type', ['OPENING_BALANCE', 'CASH_SALE', 'CASH_DEPOSIT'])
+                          ->sum('amount');
                           
-        return $this->opening_amount + $cashSales;
+        $subtractions = $this->cashTransactions()
+                             ->whereIn('type', ['EXPENSE', 'OWNER_WITHDRAWAL', 'CASH_REFUND'])
+                             ->sum('amount');
+                             
+        return $additions - $subtractions;
     }
 }

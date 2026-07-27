@@ -73,6 +73,11 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         // Register Sessions (Shift Management)
         Route::post('/register-sessions/open', [\App\Http\Controllers\RegisterSessionController::class, 'store'])->name('register-sessions.open');
         Route::post('/register-sessions/{registerSession}/close', [\App\Http\Controllers\RegisterSessionController::class, 'close'])->name('register-sessions.close');
+
+        // Cash Movements
+        Route::post('/cash-transactions/expense', [\App\Http\Controllers\CashTransactionController::class, 'addExpense'])->name('cash-transactions.expense');
+        Route::post('/cash-transactions/withdrawal', [\App\Http\Controllers\CashTransactionController::class, 'ownerWithdrawal'])->name('cash-transactions.withdrawal');
+        Route::post('/cash-transactions/deposit', [\App\Http\Controllers\CashTransactionController::class, 'cashDeposit'])->name('cash-transactions.deposit');
     });
 
     // Administrative Resource Routes

@@ -290,6 +290,32 @@
 
     @php
         $openSession = \App\Models\RegisterSession::openForUser(auth()->id())->first();
+        $defaultOpening = 0;
+        $cashAccountBalance = 0;
+        
+        if (!$openSession) {
+            $lastSession = \App\Models\RegisterSession::where('user_id', auth()->id())
+                ->where('status', 'closed')
+                ->latest('closed_at')
+                ->first();
+            if ($lastSession) {
+                $defaultOpening = $lastSession->closing_amount_actual;
+            }
+
+            // Fetch the expected opening balance from the Cash Account in the ledger
+            $cashAccount = \App\Models\Account::where('company_id', session('company_id'))
+                ->where(function($q) {
+                    $q->where('account_name', 'like', '%Cash%')
+                      ->orWhere('account_code', '1000');
+                })
+                ->first();
+                
+            if ($cashAccount) {
+                $cashAccountBalance = $cashAccount->calculateBalance();
+                // Set default opening to the ledger balance
+                $defaultOpening = $cashAccountBalance;
+            }
+        }
     @endphp
 
     @if(!$openSession)
@@ -307,18 +333,27 @@
             <form action="{{ route('register-sessions.open') }}" method="POST">
                 @csrf
                 <div class="mb-6">
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">Opening Cash Amount ($)</label>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-semibold text-slate-700">Opening Cash Amount ($)</label>
+                        @if($cashAccountBalance > 0)
+                        <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">Ledger: ${{ number_format($cashAccountBalance, 2) }}</span>
+                        @endif
+                    </div>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <span class="text-slate-400 font-bold">$</span>
                         </div>
                         <input type="number" name="opening_amount" step="0.01" min="0" required autofocus
                             class="w-full pl-10 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:ring-2 focus:ring-indigo-600 outline-none transition-shadow"
-                            placeholder="0.00">
+                            placeholder="0.00" value="{{ number_format($defaultOpening, 2, '.', '') }}">
                     </div>
                 </div>
                 <div class="flex gap-3">
                     <a href="{{ route('dashboard') }}" class="flex-1 py-4 text-center font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors">Back</a>
+                    <button type="button" @click="$el.closest('.fixed').remove(); document.getElementById('pos-main').classList.remove('pointer-events-none', 'blur-sm');" class="flex-1 py-4 text-center font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors text-xs flex flex-col justify-center">
+                        <span>Skip Shift</span>
+                        <span class="font-normal opacity-70">(Simple Billing)</span>
+                    </button>
                     <button type="submit" class="flex-1 py-4 text-center font-bold text-white bg-indigo-600 rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all">Open Shift</button>
                 </div>
             </form>
@@ -327,6 +362,7 @@
     @endif
 
     @if($openSession)
+
     {{-- Close Register Modal --}}
     <div x-show="showCloseRegister" style="display: none;" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-transition>
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 border border-slate-100">
@@ -623,7 +659,7 @@
     {{-- ===================================================================
      MAIN LAYOUT: Sidebar | Products | Cart
 =================================================================== --}}
-    <div class="flex h-screen overflow-hidden w-full {{ !$openSession ? 'pointer-events-none blur-sm' : '' }}">
+    <div id="pos-main" class="flex h-screen overflow-hidden w-full {{ !$openSession ? 'pointer-events-none blur-sm' : '' }}">
         {{-- ===============================================================
          LEFT: CATEGORY SIDEBAR
     =============================================================== --}}
@@ -657,7 +693,7 @@
                     <div class="ml-auto w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" title="Online"></div>
                 </div>
                 @if($openSession)
-                <div class="mt-3">
+                <div class="mt-3 space-y-2">
                     <button @click="showCloseRegister = true" class="w-full py-2 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         Close Register
@@ -1246,7 +1282,7 @@
                                         <div class="flex items-end gap-2">
                                             <div class="flex-1 space-y-1">
                                                 <label class="text-[10px] font-black uppercase text-slate-400">Method</label>
-                                                <select x-model="p.method" @change="p.card_id = ''; p.offer_id = ''; p.offers = [];" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
+                                                <select :value="p.method" @change="p.method = $event.target.value; p.card_id = ''; p.offer_id = ''; p.offers = [];" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:border-brand-500 outline-none">
                                                     <template x-for="acc in paymentAccounts" :key="acc.id">
                                                         <option :value="acc.id" x-text="acc.account_name"></option>
                                                     </template>

@@ -37,12 +37,21 @@ class RegisterSessionController extends Controller
             return redirect()->back()->with('error', 'You already have an open register session.');
         }
 
-        RegisterSession::create([
+        $session = RegisterSession::create([
             'company_id' => session('company_id'),
             'user_id' => Auth::id(),
             'opened_at' => now(),
             'opening_amount' => $request->opening_amount,
             'status' => 'open',
+        ]);
+
+        \App\Models\CashTransaction::create([
+            'register_session_id' => $session->id,
+            'type' => 'OPENING_BALANCE',
+            'amount' => $request->opening_amount,
+            'payment_method' => 'Cash',
+            'description' => 'Opening Balance',
+            'created_by' => Auth::id(),
         ]);
 
         return redirect()->back()->with('success', 'Register opened successfully.');
@@ -78,6 +87,15 @@ class RegisterSessionController extends Controller
             'difference' => $difference,
             'status' => 'closed',
             'notes' => $request->notes,
+        ]);
+
+        \App\Models\CashTransaction::create([
+            'register_session_id' => $registerSession->id,
+            'type' => 'CLOSING_BALANCE',
+            'amount' => $actualAmount,
+            'payment_method' => 'Cash',
+            'description' => 'Closing Balance recorded',
+            'created_by' => Auth::id(),
         ]);
 
         return redirect()->back()->with('success', 'Register closed successfully. Difference: $' . number_format($difference, 2));
