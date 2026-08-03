@@ -92,6 +92,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Restaurant Specific Routes
     Route::middleware('module:table_management')->group(function () {
         Route::get('/tables/map', [TableController::class, 'map'])->name('tables.map');
+        Route::post('/tables/{table}/status', [TableController::class, 'updateStatus'])->name('tables.status');
         Route::resource('tables', TableController::class);
         Route::resource('sections', SectionController::class);
     });
@@ -109,6 +110,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/waiter/order/{table}', [WaiterController::class, 'createOrder'])->name('waiter.order');
         Route::post('/waiter/order/{table}', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
         Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
+        Route::post('/waiter/order/{table}/complete', [WaiterController::class, 'completeOrder'])->name('waiter.order.complete');
         Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
         Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
     });

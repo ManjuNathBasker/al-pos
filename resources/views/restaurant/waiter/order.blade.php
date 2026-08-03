@@ -19,7 +19,13 @@
     <header class="sticky top-0 z-40 glass border-b border-white px-6 py-4 flex items-center justify-between">
         <div>
             <h1 class="text-xl font-black text-slate-800 uppercase tracking-tighter">Waiter Panel</h1>
-            <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{{ $table->name }} • {{ $table->section->name }}</p>
+            <div class="flex items-center gap-2 mt-1">
+                <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{{ $table->name }} • {{ $table->section->name }}</p>
+                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase border border-slate-200" x-text="tableData.status"></span>
+                <button @click="openStatusModal()" class="text-indigo-500 hover:text-indigo-700 p-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                </button>
+            </div>
         </div>
         <div class="flex gap-3">
             <button @click="showTracking = true" class="p-2 bg-indigo-50 rounded-full text-indigo-600 relative">
@@ -237,6 +243,13 @@
                                 CANCEL ENTIRE ORDER
                             </button>
                         </template>
+
+                        <template x-if="activeOrder.status === 'paid'">
+                            <button @click="completeOrder()" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 mb-4">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                COMPLETE & CLOSE ORDER
+                            </button>
+                        </template>
                         
                         <p class="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">
                             WAITER CONTROL PANEL
@@ -256,6 +269,44 @@
         </div>
     </div>
 
+    <!-- Status Modal -->
+    <div x-show="isStatusModalOpen" class="fixed inset-0 z-[70] flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="isStatusModalOpen = false"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" @click.stop>
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800">Update Table Status</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select x-model="modalData.status" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="available">Available</option>
+                        <option value="occupied">Occupied</option>
+                        <option value="reserved">Reserved</option>
+                        <option value="cleaning">Cleaning</option>
+                    </select>
+                </div>
+                
+                <template x-if="modalData.status === 'reserved'">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Customer Name (Optional)</label>
+                            <input type="text" x-model="modalData.customer_name" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. John Doe">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Phone Number (Optional)</label>
+                            <input type="text" x-model="modalData.customer_phone" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. 9876543210">
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button @click="isStatusModalOpen = false" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+                <button @click="saveStatus()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700" :disabled="isSavingStatus" x-text="isSavingStatus ? 'Saving...' : 'Save Changes'"></button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function guestApp() {
             return {
@@ -266,6 +317,18 @@
                 isPlacing: false,
                 activeOrder: @json($activeOrder),
                 tableId: '{{ $table->id }}',
+                tableData: {
+                    status: '{{ $table->status }}',
+                    customer_name: '{{ addslashes($table->customer_name ?? '') }}',
+                    customer_phone: '{{ addslashes($table->customer_phone ?? '') }}'
+                },
+                isStatusModalOpen: false,
+                isSavingStatus: false,
+                modalData: {
+                    status: '',
+                    customer_name: '',
+                    customer_phone: ''
+                },
 
                 get cartCount() { return this.cart.reduce((sum, item) => sum + item.qty, 0); },
                 get cartTotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
@@ -379,7 +442,7 @@
                 },
 
                 async completeOrder() {
-                    if (!confirm('Mark order as PAID and free this table?')) return;
+                    if (!confirm('Mark order as COMPLETED and free this table?')) return;
                     try {
                         const res = await fetch(`/waiter/order/${this.tableId}/complete`, {
                             method: 'POST',
@@ -397,6 +460,47 @@
                         }
                     } catch (e) {
                         alert('Error completing order');
+                    }
+                },
+
+                openStatusModal() {
+                    this.modalData = {
+                        status: this.tableData.status,
+                        customer_name: this.tableData.customer_name,
+                        customer_phone: this.tableData.customer_phone
+                    };
+                    this.isStatusModalOpen = true;
+                },
+
+                async saveStatus() {
+                    this.isSavingStatus = true;
+                    try {
+                        const res = await fetch(`/tables/${this.tableId}/status`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                status: this.modalData.status,
+                                customer_name: this.modalData.customer_name,
+                                customer_phone: this.modalData.customer_phone,
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.tableData.status = this.modalData.status;
+                            this.tableData.customer_name = this.modalData.customer_name;
+                            this.tableData.customer_phone = this.modalData.customer_phone;
+                            this.isStatusModalOpen = false;
+                        } else {
+                            alert(data.message || 'Error updating status');
+                        }
+                    } catch (e) {
+                        alert('Network error updating status');
+                    } finally {
+                        this.isSavingStatus = false;
                     }
                 },
 

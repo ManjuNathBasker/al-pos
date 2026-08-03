@@ -16,6 +16,8 @@ class RestaurantTable extends Model
         'capacity',
         'status',
         'qr_token',
+        'customer_name',
+        'customer_phone',
     ];
 
     public function section()

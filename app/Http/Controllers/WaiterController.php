@@ -23,7 +23,7 @@ class WaiterController extends Controller
         $products = Product::where('is_active', true)->get();
         
         $activeOrder = Order::where('table_id', $table->id)
-            ->whereIn('status', ['pending', 'processing'])
+            ->whereIn('status', ['pending', 'processing', 'paid'])
             ->with('items')
             ->first();
 
@@ -41,7 +41,7 @@ class WaiterController extends Controller
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $order = Order::where('table_id', $table->id)
-                ->whereIn('status', ['pending', 'processing'])
+                ->whereIn('status', ['pending', 'processing', 'paid'])
                 ->first();
 
             if (!$order) {
@@ -117,7 +117,7 @@ class WaiterController extends Controller
     public function getStatus(RestaurantTable $table)
     {
         $order = Order::where('table_id', $table->id)
-            ->whereIn('status', ['pending', 'processing'])
+            ->whereIn('status', ['pending', 'processing', 'paid'])
             ->with('items')
             ->first();
 
@@ -185,6 +185,62 @@ class WaiterController extends Controller
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function completeOrder(Request $request, RestaurantTable $table)
+    {
+        $order = Order::where('table_id', $table->id)
+            ->whereIn('status', ['paid']) // Make sure it's billed first
+            ->first();
+
+        if (!$order) {
+            // Check if there is a pending order instead
+            $pendingOrder = Order::where('table_id', $table->id)
+                ->whereIn('status', ['pending', 'processing'])
+                ->first();
+                
+            if ($pendingOrder) {
+                return response()->json(['success' => false, 'message' => 'Order is not yet billed. Please bill the order at POS first.'], 422);
+            }
+            return response()->json(['success' => false, 'message' => 'No active billed order found for this table.'], 404);
+        }
+
+        // Verify KOT items are completed (served)
+        $unservedTickets = \App\Models\KitchenTicket::where('order_id', $order->id)
+            ->where('status', '!=', 'served')
+            ->count();
+            
+        if ($unservedTickets > 0 || $order->kitchen_status !== 'served') {
+            // But wait, what if kitchen_status on order isn't updated?
+            // Actually, we need to make sure all items are served.
+            $unservedItems = \App\Models\OrderItem::where('order_id', $order->id)
+                ->where('kitchen_status', '!=', 'served')
+                ->where('kitchen_status', '!=', 'none')
+                ->count();
+                
+            if ($unservedTickets > 0 || $unservedItems > 0) {
+                return response()->json(['success' => false, 'message' => 'All Kitchen Tickets must be served before closing.'], 422);
+            }
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Close the order
+            $order->update(['status' => 'closed']);
+            
+            // Free the table and clear any customer details
+            $table->update([
+                'status' => 'available',
+                'customer_name' => null,
+                'customer_phone' => null
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            return response()->json(['success' => true, 'message' => 'Order closed and table is now available.']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Error completing order: ' . $e->getMessage()], 500);
         }
     }
 

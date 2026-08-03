@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="sm:flex sm:items-center sm:justify-between mb-8">
+<div class="sm:flex sm:items-center sm:justify-between mb-8" x-data="tableMap()">
     <div>
         <h2 class="text-2xl font-bold text-slate-800">Live Table Map</h2>
         <p class="mt-1 text-sm text-slate-500">Real-time occupancy and status of all dining tables.</p>
@@ -61,7 +61,7 @@
 </div>
 @endif
 
-<div class="space-y-12">
+<div class="space-y-12" x-data="tableMap()">
     @forelse($sections as $section)
         <section>
             <div class="flex items-center gap-4 mb-6">
@@ -103,12 +103,13 @@
                         </div>
 
                         <!-- Hover Overlay Actions -->
-                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 bg-slate-900/10 rounded-2xl backdrop-blur-[1px]">
+                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 bg-slate-900/40 rounded-2xl backdrop-blur-[2px]">
                             @if($table->status === 'available')
-                                <a href="{{ route('waiter.order', $table) }}" class="bg-indigo-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg">NEW ORDER</a>
+                                <a href="{{ route('waiter.order', $table) }}" class="w-24 text-center bg-indigo-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg">NEW ORDER</a>
                             @else
-                                <a href="{{ route('waiter.order', $table) }}" class="bg-white text-slate-800 text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg border border-slate-200">VIEW ORDER</a>
+                                <a href="{{ route('waiter.order', $table) }}" class="w-24 text-center bg-white text-slate-800 text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg border border-slate-200">VIEW ORDER</a>
                             @endif
+                            <button @click.prevent="openStatusModal({{ $table->id }}, '{{ $table->status }}', '{{ addslashes($table->customer_name ?? '') }}', '{{ addslashes($table->customer_phone ?? '') }}')" class="w-24 text-center bg-slate-800 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg hover:bg-slate-700">EDIT STATUS</button>
                         </div>
                     </div>
                 @endforeach
@@ -119,7 +120,98 @@
             <p class="text-slate-500">No tables configured. Please go to Settings to add tables and sections.</p>
         </div>
     @endforelse
+
+    <!-- Status Modal -->
+    <div x-show="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="closeModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" @click.stop>
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800">Update Table Status</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select x-model="modalData.status" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="available">Available</option>
+                        <option value="occupied">Occupied</option>
+                        <option value="reserved">Reserved</option>
+                        <option value="cleaning">Cleaning</option>
+                    </select>
+                </div>
+                
+                <template x-if="modalData.status === 'reserved'">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Customer Name (Optional)</label>
+                            <input type="text" x-model="modalData.customer_name" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. John Doe">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Phone Number (Optional)</label>
+                            <input type="text" x-model="modalData.customer_phone" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. 9876543210">
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button @click="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+                <button @click="saveStatus()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700" :disabled="isSaving" x-text="isSaving ? 'Saving...' : 'Save Changes'"></button>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('tableMap', () => ({
+        isModalOpen: false,
+        isSaving: false,
+        modalData: {
+            id: null,
+            status: 'available',
+            customer_name: '',
+            customer_phone: ''
+        },
+
+        openStatusModal(id, status, name, phone) {
+            this.modalData = { id, status, customer_name: name || '', customer_phone: phone || '' };
+            this.isModalOpen = true;
+        },
+
+        closeModal() {
+            this.isModalOpen = false;
+        },
+
+        async saveStatus() {
+            this.isSaving = true;
+            try {
+                const res = await fetch(`/tables/${this.modalData.id}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: this.modalData.status,
+                        customer_name: this.modalData.customer_name,
+                        customer_phone: this.modalData.customer_phone,
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Error updating status');
+                }
+            } catch (e) {
+                alert('Network error updating status');
+            } finally {
+                this.isSaving = false;
+            }
+        }
+    }));
+});
+</script>
 
 <style>
     /* Premium touch: subtle scale on hover */

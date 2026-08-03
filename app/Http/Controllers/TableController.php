@@ -65,4 +65,32 @@ class TableController extends Controller
         $table->delete();
         return redirect()->back()->with('success', 'Table deleted successfully.');
     }
+
+    public function updateStatus(Request $request, RestaurantTable $table)
+    {
+        $request->validate([
+            'status' => 'required|in:available,occupied,reserved,cleaning',
+            'customer_name' => 'nullable|string|max:255',
+            'customer_phone' => 'nullable|string|max:50',
+        ]);
+
+        $status = $request->input('status');
+        $data = ['status' => $status];
+
+        if ($status === 'reserved') {
+            $data['customer_name'] = $request->input('customer_name');
+            $data['customer_phone'] = $request->input('customer_phone');
+        } else if (in_array($status, ['available', 'cleaning'])) {
+            $data['customer_name'] = null;
+            $data['customer_phone'] = null;
+        }
+
+        $table->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Table status updated successfully.',
+            'table' => $table
+        ]);
+    }
 }

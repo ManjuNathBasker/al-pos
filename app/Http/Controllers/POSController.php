@@ -270,8 +270,8 @@ class POSController extends Controller
             'coupon_id'        => 'nullable|exists:coupons,id',
             'note'             => 'nullable|string|max:500',
             'total'            => 'required|numeric|min:0',
-            'customer_phone'   => 'required|string',
-            'customer_name'    => 'required|string',
+            'customer_phone'   => 'nullable|string',
+            'customer_name'    => 'nullable|string',
         ]);
 
         $cart = $request->input('cart');
@@ -295,10 +295,11 @@ class POSController extends Controller
 
         DB::beginTransaction();
         try {
-            // Find or create customer
+            $phone = $request->customer_phone ?: '0000000000';
+            $name = $request->customer_name ?: 'Walk-in Customer';
             $customer = Customer::firstOrCreate(
-                ['phone' => $request->customer_phone],
-                ['name' => $request->customer_name, 'wallet_balance' => 0]
+                ['phone' => $phone],
+                ['name' => $name, 'wallet_balance' => 0]
             );
 
             // Track card discounts and service charges
@@ -425,26 +426,13 @@ class POSController extends Controller
                 $order = Order::findOrFail($request->order_id);
                 $order->update($orderData);
                 
-                // If it was a dine-in order, free the table
-                if ($order->table_id) {
-                    \App\Models\RestaurantTable::where('id', $order->table_id)->update(['status' => 'available']);
+                // Removed: Do not automatically free the table or mark KOT as served here.
+                // The waiter panel's "Complete Order" action will handle that.
+
+                // Clear existing items and re-add from cart to ensure consistency (except for dine-in to preserve KDS tracking)
+                if ($order->service_type !== 'dine_in') {
+                    $order->items()->delete();
                 }
-
-                // Mark all kitchen tickets as served if they weren't
-                \App\Models\KitchenTicket::where('order_id', $order->id)
-                    ->where('status', '!=', 'served')
-                    ->each(function($ticket) {
-                        $ticket->update(['status' => 'served']);
-                        // Only update items if the status is valid for them
-                        foreach($ticket->items as $item) {
-                            if ($item->orderItem) {
-                                $item->orderItem->update(['kitchen_status' => 'served']);
-                            }
-                        }
-                    });
-
-                // Clear existing items and re-add from cart to ensure consistency
-                $order->items()->delete();
             } else {
                 if (empty($orderData['order_number'])) {
                     $orderData['order_number'] = 'ORD-' . str_pad((Order::withTrashed()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
@@ -500,15 +488,17 @@ class POSController extends Controller
             }
 
             // Save items
-            foreach ($cart as $item) {
-                OrderItem::create([
-                    'order_id'   => $order->id,
-                    'product_id' => $item['id'],
-                    'product_name'    => $item['name'],
-                    'unit_price'      => $item['price'],
-                    'quantity'        => $item['qty'],
-                    'subtotal'   => $item['price'] * $item['qty'],
-                ]);
+            if (!$request->order_id || $order->service_type !== 'dine_in') {
+                foreach ($cart as $item) {
+                    OrderItem::create([
+                        'order_id'   => $order->id,
+                        'product_id' => $item['id'],
+                        'product_name'    => $item['name'],
+                        'unit_price'      => $item['price'],
+                        'quantity'        => $item['qty'],
+                        'subtotal'   => $item['price'] * $item['qty'],
+                    ]);
+                }
             }
 
             // If it's a new Takeaway or Delivery order in Restaurant Mode, send to Kitchen
