@@ -42,6 +42,16 @@ class Order extends Model
         'kitchen_status',
         'waiter_id',
         'is_stock_deducted',
+        // Card commission fields
+        'card_type_id',
+        'card_commission_amount',
+        'card_commission_tax_amount',
+        'card_commission_total_deduction',
+        'card_net_received',
+        // Delivery partner fields
+        'delivery_partner_id',
+        'delivery_commission_amount',
+        'settlement_status',
     ];
 
     protected $casts = [
@@ -58,6 +68,11 @@ class Order extends Model
         'wallet_used'     => 'float',
         'change_returned' => 'float',
         'total_paid'      => 'float',
+        // Card commission casts
+        'card_commission_amount'           => 'float',
+        'card_commission_tax_amount'       => 'float',
+        'card_commission_total_deduction'  => 'float',
+        'card_net_received'                => 'float',
     ];
 
     // ── Boot: auto-generate order number ───────────────────────────
@@ -119,6 +134,11 @@ class Order extends Model
     public function cardTransactions()
     {
         return $this->hasMany(CardTransaction::class);
+    }
+
+    public function cardType()
+    {
+        return $this->belongsTo(CardType::class);
     }
 
     // ── Scopes ───────────────────────────────────────────────────────

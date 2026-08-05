@@ -548,19 +548,99 @@
             class="bg-white rounded-3xl p-8 shadow-2xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
             
             <!-- Bill Content -->
-            <div id="receipt-container" class="receipt-container bg-white p-6 mb-6 border border-slate-200 rounded-lg">
+            <!-- On-Screen View (Hidden during print) -->
+            <div class="print:hidden">
+                <div id="receipt-container" class="receipt-container bg-white p-6 mb-6 border border-slate-200 rounded-lg">
+                    <!-- Header -->
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <h2 style="margin: 0; font-size: 16px; text-transform: uppercase;">{{ config('app.name') }}</h2>
+                        <p style="margin: 2px 0;">123 Supermarket St, Retail City</p>
+                        <p style="margin: 2px 0;">Tel: +1 234 567 890</p>
+                        <p style="margin: 5px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0;">
+                            RECEIPT: #<span x-text="lastOrderId"></span>
+                        </p>
+                    </div>
+
+                    <!-- Info Section -->
+                    <div style="margin-bottom: 10px;">
+                        <p style="margin: 0;" x-text="'Date: ' + new Date().toLocaleString('en-US')"></p>
+                        <p style="margin: 0;">Cashier: {{ auth()->user()->name ?? 'Admin' }}</p>
+                        <template x-if="lastOrderCustomer.name">
+                            <p style="margin: 0;" x-text="'Customer: ' + lastOrderCustomer.name"></p>
+                        </template>
+                    </div>
+
+                    <!-- Items Table -->
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #000;">
+                                <th style="text-align: left; padding: 5px 0;">Item</th>
+                                <th style="text-align: center;">Qty</th>
+                                <th style="text-align: right;">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="item in lastOrderItems" :key="item.id">
+                                <tr>
+                                    <td style="padding: 5px 0;">
+                                        <span x-text="item.name"></span><br>
+                                        <small x-text="'SKU: ' + (item.sku || 'N/A')" style="font-size: 10px;"></small>
+                                    </td>
+                                    <td style="text-align: center;" x-text="item.qty"></td>
+                                    <td style="text-align: right;" x-text="(item.price * item.qty).toFixed(2)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                    <!-- Totals -->
+                    <div style="border-top: 1px dashed #000; padding-top: 5px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Subtotal:</span>
+                            <span x-text="lastOrderSubtotal.toFixed(2)"></span>
+                        </div>
+                        <template x-if="lastOrderDiscount > 0">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span x-text="'Discount (' + lastOrderDiscountPercent + '%):'"></span>
+                                <span x-text="'-' + lastOrderDiscount.toFixed(2)"></span>
+                            </div>
+                        </template>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Tax (8%):</span>
+                            <span x-text="lastOrderTax.toFixed(2)"></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px;">
+                            <span>GRAND TOTAL:</span>
+                            <span x-text="'$' + lastOrderTotal.toFixed(2)"></span>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="text-align: center; margin-top: 20px; font-size: 10px;">
+                        <p style="margin: 0;">THANK YOU FOR SHOPPING WITH US!</p>
+                        <p style="margin: 0;">Please keep this receipt for returns.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thermal Print Receipt (Hidden on screen) -->
+            <div class="hidden print:block" style="width: 100%; max-width: 320px; font-family: 'Courier New', Courier, monospace; color: #000; font-size: 12px; line-height: 1.4; margin: 0;">
+                <style type="text/css" media="print">
+                    @page { margin: 0; size: 80mm auto; }
+                    body { margin: 0; }
+                </style>
                 <!-- Header -->
-                <div style="text-align: center; margin-bottom: 10px;">
-                    <h2 style="margin: 0; font-size: 16px; text-transform: uppercase;">{{ config('app.name') }}</h2>
+                <div style="text-align: center; margin-bottom: 12px;">
+                    <h2 style="margin: 0; font-size: 18px; font-weight: bold; text-transform: uppercase;">{{ config('app.name') }}</h2>
                     <p style="margin: 2px 0;">123 Supermarket St, Retail City</p>
                     <p style="margin: 2px 0;">Tel: +1 234 567 890</p>
-                    <p style="margin: 5px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3px 0;">
+                    <div style="margin: 8px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 4px 0; font-weight: bold;">
                         RECEIPT: #<span x-text="lastOrderId"></span>
-                    </p>
+                    </div>
                 </div>
 
                 <!-- Info Section -->
-                <div style="margin-bottom: 10px;">
+                <div style="margin-bottom: 12px;">
                     <p style="margin: 0;" x-text="'Date: ' + new Date().toLocaleString('en-US')"></p>
                     <p style="margin: 0;">Cashier: {{ auth()->user()->name ?? 'Admin' }}</p>
                     <template x-if="lastOrderCustomer.name">
@@ -569,54 +649,54 @@
                 </div>
 
                 <!-- Items Table -->
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
                     <thead>
-                        <tr style="border-bottom: 1px solid #000;">
-                            <th style="text-align: left; padding: 5px 0;">Item</th>
-                            <th style="text-align: center;">Qty</th>
-                            <th style="text-align: right;">Price</th>
+                        <tr style="border-bottom: 1px dashed #000;">
+                            <th style="text-align: left; padding: 4px 0; font-weight: bold;">ITEM</th>
+                            <th style="text-align: center; font-weight: bold;">QTY</th>
+                            <th style="text-align: right; font-weight: bold;">PRICE</th>
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="item in lastOrderItems" :key="item.id">
                             <tr>
-                                <td style="padding: 5px 0;">
-                                    <span x-text="item.name"></span><br>
-                                    <small x-text="'SKU: ' + (item.sku || 'N/A')" style="font-size: 10px;"></small>
+                                <td style="padding: 4px 0; vertical-align: top;">
+                                    <span x-text="item.name.substring(0, 20)"></span><br>
+                                    <small x-text="item.sku || ''" style="font-size: 10px; color: #555;"></small>
                                 </td>
-                                <td style="text-align: center;" x-text="item.qty"></td>
-                                <td style="text-align: right;" x-text="(item.price * item.qty).toFixed(2)"></td>
+                                <td style="text-align: center; vertical-align: top; padding: 4px 0;" x-text="item.qty"></td>
+                                <td style="text-align: right; vertical-align: top; padding: 4px 0;" x-text="(item.price * item.qty).toFixed(2)"></td>
                             </tr>
                         </template>
                     </tbody>
                 </table>
 
                 <!-- Totals -->
-                <div style="border-top: 1px dashed #000; padding-top: 5px;">
+                <div style="border-top: 1px dashed #000; padding-top: 8px;">
                     <div style="display: flex; justify-content: space-between;">
-                        <span>Subtotal:</span>
+                        <span>SUBTOTAL:</span>
                         <span x-text="lastOrderSubtotal.toFixed(2)"></span>
                     </div>
                     <template x-if="lastOrderDiscount > 0">
                         <div style="display: flex; justify-content: space-between;">
-                            <span x-text="'Discount (' + lastOrderDiscountPercent + '%):'"></span>
+                            <span x-text="'DISCOUNT (' + lastOrderDiscountPercent + '%):'"></span>
                             <span x-text="'-' + lastOrderDiscount.toFixed(2)"></span>
                         </div>
                     </template>
                     <div style="display: flex; justify-content: space-between;">
-                        <span>Tax (8%):</span>
+                        <span>TAX:</span>
                         <span x-text="lastOrderTax.toFixed(2)"></span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 5px;">
-                        <span>GRAND TOTAL:</span>
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin-top: 8px; border-top: 1px dashed #000; padding-top: 8px;">
+                        <span>TOTAL:</span>
                         <span x-text="'$' + lastOrderTotal.toFixed(2)"></span>
                     </div>
                 </div>
 
                 <!-- Footer -->
-                <div style="text-align: center; margin-top: 20px; font-size: 10px;">
+                <div style="text-align: center; margin-top: 24px; font-size: 12px; border-top: 1px dashed #000; padding-top: 12px;">
                     <p style="margin: 0;">THANK YOU FOR SHOPPING WITH US!</p>
-                    <p style="margin: 0;">Please keep this receipt for returns.</p>
+                    <p style="margin: 0; margin-top: 4px;">Please keep this receipt for returns.</p>
                 </div>
             </div>
 

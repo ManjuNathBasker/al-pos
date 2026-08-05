@@ -19,6 +19,7 @@
     @csrf
     @method('PATCH')
 
+    {{-- Company Details --}}
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="p-6 space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -70,8 +71,40 @@
         </div>
 
         <div class="bg-slate-50 px-6 py-4 flex items-center justify-end border-t border-slate-200">
-            <a href="{{ route('companies.index') }}" class="rounded-md border border-slate-300 bg-white py-2 px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 mr-3">Cancel</a>
-            <button type="submit" class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Update Company</button>
+            <a href="{{ route('companies.index') }}" class="rounded-md border border-slate-300 bg-white py-2 px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 mr-3">Cancel</a>
+            <button type="submit" class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">Update Company</button>
+        </div>
+    </div>
+
+    {{-- General Settings --}}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h3 class="text-base font-bold text-slate-800">General Settings</h3>
+            <p class="text-sm text-slate-500 mt-0.5">Configure company-wide payment and commission settings.</p>
+        </div>
+        <div class="p-6 space-y-5">
+            <!-- Card Commission Tax -->
+            <div class="max-w-xs">
+                <label for="card_commission_tax" class="block text-sm font-semibold text-slate-700">
+                    Card Commission Tax (%)
+                </label>
+                <p class="text-xs text-slate-400 mt-0.5 mb-2">
+                    Tax applied on the commission amount for all card payments at POS.
+                </p>
+                <div class="flex items-center gap-2">
+                    <input type="number" name="card_commission_tax" id="card_commission_tax"
+                           value="{{ old('card_commission_tax', $cardCommissionTax ?? 0) }}"
+                           step="0.01" min="0" max="100"
+                           class="block w-32 rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 font-mono @error('card_commission_tax') border-red-400 @enderror">
+                    <span class="text-sm font-semibold text-slate-500">%</span>
+                </div>
+                @error('card_commission_tax')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+        </div>
+        <div class="bg-slate-50 px-6 py-4 flex items-center justify-end border-t border-slate-200">
+            <button type="submit" class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
+                Save Settings
+            </button>
         </div>
     </div>
 </form>

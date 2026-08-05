@@ -58,8 +58,8 @@
     <!-- Left Col: Items & Receipt -->
     <div class="lg:col-span-2 space-y-8">
         
-        <!-- Printable Receipt Area -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print-area">
+        <!-- On-Screen View (Hidden during print) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:hidden">
             <div class="p-6 sm:p-8">
                 <!-- Receipt Header -->
                 <div class="flex justify-between items-start mb-8 pb-8 border-b border-slate-200 border-dashed">
@@ -131,6 +131,82 @@
 
     </div>
 
+    <!-- Thermal Print Receipt -->
+    <div class="hidden print:block" style="width: 100%; max-width: 320px; font-family: 'Courier New', Courier, monospace; color: #000; font-size: 12px; line-height: 1.4; margin: 0;">
+        <style type="text/css" media="print">
+            @page { margin: 0; size: 80mm auto; }
+            body { margin: 0; }
+        </style>
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 12px;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: bold; text-transform: uppercase;">{{ config('app.name', 'POS Store') }}</h2>
+            <p style="margin: 2px 0;">123 Supermarket St, Retail City</p>
+            <p style="margin: 2px 0;">Tel: +1 234 567 890</p>
+            <div style="margin: 8px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 4px 0; font-weight: bold;">
+                RECEIPT: #{{ $order->order_number }}
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div style="margin-bottom: 12px;">
+            <p style="margin: 0;">Date: {{ $order->created_at->format('n/j/Y, g:i:s A') }}</p>
+            <p style="margin: 0;">Cashier: {{ $order->user->name ?? 'Admin' }}</p>
+            @if($order->customer_id)
+                <p style="margin: 0;">Customer: {{ $order->customer->name ?? 'Walk-in' }}</p>
+            @endif
+        </div>
+
+        <!-- Items Table -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+            <thead>
+                <tr style="border-bottom: 1px dashed #000;">
+                    <th style="text-align: left; padding: 4px 0; font-weight: bold;">ITEM</th>
+                    <th style="text-align: center; font-weight: bold;">QTY</th>
+                    <th style="text-align: right; font-weight: bold;">PRICE</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($order->items as $item)
+                <tr>
+                    <td style="padding: 4px 0; vertical-align: top;">
+                        <span>{{ Str::limit($item->product_name, 20) }}</span><br>
+                        <small style="font-size: 10px; color: #555;">{{ $item->product->sku ?? '' }}</small>
+                    </td>
+                    <td style="text-align: center; vertical-align: top; padding: 4px 0;">{{ $item->quantity }}</td>
+                    <td style="text-align: right; vertical-align: top; padding: 4px 0;">{{ number_format($item->subtotal, 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div style="border-top: 1px dashed #000; padding-top: 8px;">
+            <div style="display: flex; justify-content: space-between;">
+                <span>SUBTOTAL:</span>
+                <span>{{ number_format($order->items->sum('subtotal'), 2) }}</span>
+            </div>
+            @if($order->discount_amount > 0)
+            <div style="display: flex; justify-content: space-between;">
+                <span>DISCOUNT:</span>
+                <span>-{{ number_format($order->discount_amount, 2) }}</span>
+            </div>
+            @endif
+            <div style="display: flex; justify-content: space-between;">
+                <span>TAX:</span>
+                <span>{{ number_format($order->tax_amount ?? 0, 2) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin-top: 8px; border-top: 1px dashed #000; padding-top: 8px;">
+                <span>TOTAL:</span>
+                <span>${{ number_format($order->total_amount, 2) }}</span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 24px; font-size: 12px; border-top: 1px dashed #000; padding-top: 12px;">
+            <p style="margin: 0;">THANK YOU FOR SHOPPING WITH US!</p>
+            <p style="margin: 0; margin-top: 4px;">Please keep this receipt for returns.</p>
+        </div>
+    </div>
     <!-- Right Col: Meta Info -->
     <div class="space-y-6 hide-on-print">
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">

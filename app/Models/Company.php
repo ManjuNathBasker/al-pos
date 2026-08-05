@@ -71,4 +71,14 @@ class Company extends Model
     {
         return $this->moduleSettings()->where('module_key', $moduleKey)->where('is_enabled', true)->exists();
     }
+
+    /**
+     * Get the card commission tax percentage from company settings.
+     * Returns 0.0 if not configured.
+     */
+    public function getCardCommissionTax(): float
+    {
+        $settings = $this->settings ?? [];
+        return (float) ($settings['card_commission_tax'] ?? 0);
+    }
 }

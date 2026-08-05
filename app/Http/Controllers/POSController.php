@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
+use App\Models\CardType;
 use App\Models\Category;
-use App\Models\Product;
-use App\Models\Order;
-use App\Models\Customer;
-use App\Models\WalletTransaction;
-use App\Models\OrderItem;
-use App\Models\Coupon;
-use App\Models\Payment;
 use App\Models\Company;
+use App\Models\Coupon;
+use App\Models\Customer;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\InventoryService;
@@ -51,7 +53,23 @@ class POSController extends Controller
                             ->where('company_id', session('company_id'))
                             ->get();
 
-        return view('pos.index', compact('categories', 'products', 'cart', 'paymentAccounts'));
+        // Pass card account IDs and card types to POS
+        $cardAccountIds = $paymentAccounts->where('is_card_account', true)->pluck('id');
+        $cardTypes = CardType::where('status', true)->orderBy('name')->get();
+
+        // Load company card commission tax setting
+        $company = Company::find(session('company_id'));
+        $cardCommissionTax = $company ? $company->getCardCommissionTax() : 0;
+
+        // Load delivery partners
+        $deliveryPartners = \App\Models\DeliveryPartner::where('company_id', session('company_id'))
+            ->where('status', true)
+            ->get();
+
+        return view('pos.index', compact(
+            'categories', 'products', 'cart', 'paymentAccounts',
+            'cardAccountIds', 'cardTypes', 'cardCommissionTax', 'deliveryPartners'
+        ));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -343,6 +361,7 @@ class POSController extends Controller
                 }
             }
 
+
             // Calculate manual discount amount
             $manualDiscount = 0;
             if ($request->discount_type === 'percent') {
@@ -374,6 +393,27 @@ class POSController extends Controller
             // Final Order Total = Subtotal - Total Discount + Tax + Card Service Charges
             $finalTotalAmount = max(0, $request->subtotal - $totalDiscountAmount + $taxAmount + $totalCardServiceCharge);
 
+            // ── Card Commission Calculation ────────────────────────────────
+            // Calculated from the card_type_id sent in the checkout payload.
+            $cardTypeId         = $request->input('card_type_id');
+            $commissionAmount   = 0;
+            $commissionTax      = 0;
+            $commissionTotal    = 0;
+            $netReceived        = 0;
+
+            if ($cardTypeId) {
+                $cardTypeModel = CardType::find($cardTypeId);
+                if ($cardTypeModel) {
+                    $company = Company::find(session('company_id'));
+                    $billAmount       = $finalTotalAmount; // commission on the full bill
+                    $commissionAmount = $cardTypeModel->calculateCommission($billAmount);
+                    $commissionTaxPct = $company ? $company->getCardCommissionTax() : 0;
+                    $commissionTax    = round($commissionAmount * ($commissionTaxPct / 100), 4);
+                    $commissionTotal  = round($commissionAmount + $commissionTax, 4);
+                    $netReceived      = round($billAmount - $commissionTotal, 4);
+                }
+            }
+
             $useWallet = filter_var($request->use_wallet, FILTER_VALIDATE_BOOLEAN);
             $walletUsed = 0;
             
@@ -401,6 +441,18 @@ class POSController extends Controller
             $changeReturned = max(0, $totalPaid - $finalTotalAmount);
             $balanceDue = max(0, $finalTotalAmount - $totalPaid);
 
+            // ── Delivery Partner Calculation ────────────────────────────────
+            $deliveryPartnerId = $request->input('delivery_partner_id');
+            $deliveryCommissionAmount = 0;
+            $settlementStatus = null;
+            if ($request->service_type === 'delivery' && $deliveryPartnerId) {
+                $deliveryPartner = \App\Models\DeliveryPartner::find($deliveryPartnerId);
+                if ($deliveryPartner) {
+                    $deliveryCommissionAmount = round($finalTotalAmount * ($deliveryPartner->commission_percentage / 100), 4);
+                    $settlementStatus = 'pending';
+                }
+            }
+
             // Create or Update Order
             $orderData = [
                 'user_id'          => auth()->id(),
@@ -420,6 +472,16 @@ class POSController extends Controller
                 'total_paid'       => $totalPaid,
                 'status'           => 'paid',
                 'register_session_id' => $openSession ? $openSession->id : null,
+                // Card commission
+                'card_type_id'                    => $cardTypeId ?: null,
+                'card_commission_amount'          => $commissionAmount,
+                'card_commission_tax_amount'      => $commissionTax,
+                'card_commission_total_deduction' => $commissionTotal,
+                'card_net_received'               => $commissionTotal > 0 ? $netReceived : 0,
+                // Delivery Partner
+                'delivery_partner_id'             => $deliveryPartnerId ?: null,
+                'delivery_commission_amount'      => $deliveryCommissionAmount,
+                'settlement_status'               => $settlementStatus,
             ];
 
             if ($request->order_id) {

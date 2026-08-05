@@ -156,6 +156,17 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/api/cards', [App\Http\Controllers\CardController::class, 'getActiveCards']);
     Route::post('/api/pos/resolve-offers', [App\Http\Controllers\BankOfferController::class, 'resolveOffers']);
     Route::get('/reports/cards', [App\Http\Controllers\CardReportController::class, 'index'])->name('reports.cards');
+
+    // Card Types Master (new — commission configuration for POS)
+    Route::resource('card-types', App\Http\Controllers\CardTypeController::class);
+    Route::get('/api/card-types', [App\Http\Controllers\CardTypeController::class, 'getActive'])->name('card-types.active');
+    
+    // Delivery Partners
+    Route::resource('delivery-partners', App\Http\Controllers\DeliveryPartnerController::class);
+    Route::get('/api/delivery-partners', [App\Http\Controllers\DeliveryPartnerController::class, 'getActive'])->name('delivery-partners.active');
+    Route::get('/delivery-partners/{delivery_partner}/settlements', [App\Http\Controllers\DeliveryPartnerController::class, 'settlements'])->name('delivery-partners.settlements');
+    Route::post('/delivery-partners/orders/{order}/settle', [App\Http\Controllers\DeliveryPartnerController::class, 'markSettled'])->name('delivery-partners.mark-settled');
+    Route::get('/reports/card-commission', [App\Http\Controllers\CardCommissionReportController::class, 'index'])->name('reports.card-commission');
 });
 
 require __DIR__.'/auth.php';

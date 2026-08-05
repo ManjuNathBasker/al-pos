@@ -109,7 +109,9 @@ class CompanyController extends Controller
     {
         $this->authorize('view', $company);
 
-        return view('companies.edit', compact('company'));
+        $cardCommissionTax = $company->getCardCommissionTax();
+
+        return view('companies.edit', compact('company', 'cardCommissionTax'));
     }
 
     public function update(Request $request, Company $company)
@@ -117,14 +119,22 @@ class CompanyController extends Controller
         $this->authorize('update', $company);
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'business_type' => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
+            'name'                => 'required|string|max:255',
+            'email'               => 'nullable|email|max:255',
+            'phone'               => 'nullable|string|max:20',
+            'address'             => 'nullable|string',
+            'business_type'       => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
+            'card_commission_tax' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $company->update($request->all());
+        // Merge card_commission_tax into the settings JSON
+        $settings = $company->settings ?? [];
+        $settings['card_commission_tax'] = (float) ($request->card_commission_tax ?? 0);
+
+        $company->update(array_merge(
+            $request->only('name', 'email', 'phone', 'address', 'business_type'),
+            ['settings' => $settings]
+        ));
 
         return redirect()->route('companies.index')->with('success', 'Company updated successfully.');
     }

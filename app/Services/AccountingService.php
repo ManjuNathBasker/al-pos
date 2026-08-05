@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\CardType;
+use App\Models\Company;
 use App\Models\Expense;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryItem;
@@ -197,6 +199,102 @@ class AccountingService
                     'account_id' => $taxAccount->id,
                     'debit_amount' => 0,
                     'credit_amount' => $order->tax_amount,
+                ]);
+            }
+        });
+
+        // ── Card Commission Auto Write-Off ──────────────────────────────
+        // Load fresh so card_type relationship is available after transaction.
+        $order->refresh();
+        if ($order->card_type_id && $order->card_commission_total_deduction > 0) {
+            $cardType = $order->cardType;
+            if ($cardType && $cardType->isAutoWriteOff()) {
+                $this->recordCardCommissionWriteOff($order, $cardType);
+            }
+        }
+    }
+
+    /**
+     * Record the card commission write-off journal entry.
+     *
+     * Journal:
+     *   Dr  Bank/Card Account         (net amount received)
+     *   Dr  Card Processing Charges   (commission amount)
+     *   Dr  Card Commission Tax       (tax on commission)
+     *   Cr  Sales                     (full bill amount)
+     */
+    public function recordCardCommissionWriteOff(Order $order, \App\Models\CardType $cardType): void
+    {
+        DB::transaction(function () use ($order, $cardType) {
+            $companyId = $order->company_id;
+
+            $journal = JournalEntry::create([
+                'company_id'       => $companyId,
+                'transaction_date' => $order->created_at->toDateString(),
+                'reference_type'   => Order::class,
+                'reference_id'     => $order->id,
+                'notes'            => 'Card Commission Write-Off — ' . $order->order_number,
+                'created_by'       => $order->created_by ?? auth()->id(),
+            ]);
+
+            $totalDeduction = round($order->card_commission_amount + $order->card_commission_tax_amount, 4);
+
+            // ── Credit: Bank / Card Account (total deduction) ──────────────
+            // We need to credit the same account that was debited in recordSale.
+            // Find the card account used in the payments.
+            $cardPaymentAccount = null;
+            if ($order->payments) {
+                foreach ($order->payments as $payment) {
+                    if (is_numeric($payment->payment_method)) {
+                        $acc = Account::find($payment->payment_method);
+                        if ($acc && $acc->is_card_account) {
+                            $cardPaymentAccount = $acc;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!$cardPaymentAccount) {
+                // fallback
+                $cardPaymentAccount = Account::where('company_id', $companyId)
+                                             ->where('is_card_account', true)
+                                             ->first();
+            }
+            if (!$cardPaymentAccount) {
+                $cardPaymentAccount = $this->getSystemAccount($companyId, 'Card / Bank', 'Asset', '1010');
+            }
+
+            JournalEntryItem::create([
+                'journal_entry_id' => $journal->id,
+                'account_id'       => $cardPaymentAccount->id,
+                'debit_amount'     => 0,
+                'credit_amount'    => $totalDeduction,
+            ]);
+
+            // ── Debit: Card Processing Charges (commission) ─────────────
+            if ($order->card_commission_amount > 0) {
+                $commissionAccount = $cardType->expense_account_id
+                    ? Account::find($cardType->expense_account_id)
+                    : null;
+                if (!$commissionAccount) {
+                    $commissionAccount = $this->getSystemAccount($companyId, 'Card Processing Charges', 'Expense', '5150');
+                }
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id'       => $commissionAccount->id,
+                    'debit_amount'     => round($order->card_commission_amount, 4),
+                    'credit_amount'    => 0,
+                ]);
+            }
+
+            // ── Debit: Card Commission Tax ──────────────────────────────
+            if ($order->card_commission_tax_amount > 0) {
+                $commissionTaxAccount = $this->getSystemAccount($companyId, 'Card Commission Tax', 'Expense', '5160');
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id'       => $commissionTaxAccount->id,
+                    'debit_amount'     => round($order->card_commission_tax_amount, 4),
+                    'credit_amount'    => 0,
                 ]);
             }
         });
