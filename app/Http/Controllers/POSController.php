@@ -512,7 +512,7 @@ class POSController extends Controller
                     ]);
                 }
                 // Also record wallet payment for split orders
-                if ($walletUsed > 0) {
+                if ($walletUsed !== 0) {
                     $order->payments()->create([
                         'company_id' => $order->company_id,
                         'payment_method' => 'wallet',
@@ -528,7 +528,7 @@ class POSController extends Controller
                         'amount' => $amount,
                     ]);
                 }
-                if ($walletUsed > 0) {
+                if ($walletUsed !== 0) {
                     $order->payments()->create([
                         'company_id' => $order->company_id, 
                         'payment_method' => 'wallet', 
@@ -593,6 +593,16 @@ class POSController extends Controller
                     'amount'      => $walletUsed,
                     'type'        => 'debit',
                     'description' => 'Applied to Order #' . $order->id,
+                ]);
+            } elseif ($walletUsed < 0) {
+                $debtPaid = abs($walletUsed);
+                $customer->increment('wallet_balance', $debtPaid);
+                WalletTransaction::create([
+                    'customer_id' => $customer->id,
+                    'order_id'    => $order->id,
+                    'amount'      => $debtPaid,
+                    'type'        => 'credit',
+                    'description' => 'Paid off previous debt with Order #' . $order->id,
                 ]);
             }
 

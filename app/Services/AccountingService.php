@@ -61,12 +61,21 @@ class AccountingService
             foreach ($order->payments as $payment) {
                 if ($payment->payment_method === 'wallet') {
                     $walletAccount = $this->getSystemAccount($companyId, 'Customer Wallet', 'Liability', '2200');
-                    JournalEntryItem::create([
-                        'journal_entry_id' => $journal->id,
-                        'account_id' => $walletAccount->id,
-                        'debit_amount' => $payment->amount,
-                        'credit_amount' => 0,
-                    ]);
+                    if ($payment->amount > 0) {
+                        JournalEntryItem::create([
+                            'journal_entry_id' => $journal->id,
+                            'account_id' => $walletAccount->id,
+                            'debit_amount' => $payment->amount,
+                            'credit_amount' => 0,
+                        ]);
+                    } else if ($payment->amount < 0) {
+                        JournalEntryItem::create([
+                            'journal_entry_id' => $journal->id,
+                            'account_id' => $walletAccount->id,
+                            'debit_amount' => 0,
+                            'credit_amount' => abs($payment->amount),
+                        ]);
+                    }
                 } else if (is_numeric($payment->payment_method)) {
                     $account = Account::find($payment->payment_method);
                     if ($account) {
@@ -422,6 +431,59 @@ class AccountingService
                 'debit_amount' => 0,
                 'credit_amount' => $expense->amount,
             ]);
+        });
+    }
+    /**
+     * Record a manual adjustment to a customer's wallet.
+     * Credits to the wallet increase liability (Wallet Liability Account).
+     * Debits from the wallet decrease liability.
+     */
+    public function recordManualWalletAdjustment(\App\Models\Customer $customer, $amount, $type, $description)
+    {
+        $companyId = $customer->company_id;
+        
+        $walletLiabilityAccount = $this->getSystemAccount($companyId, 'Wallet Liability', 'Liability');
+        $offsetAccount = $this->getSystemAccount($companyId, 'Cash', 'Asset', '1000'); 
+
+        DB::transaction(function () use ($companyId, $customer, $amount, $type, $description, $walletLiabilityAccount, $offsetAccount) {
+            $journal = JournalEntry::create([
+                'company_id' => $companyId,
+                'transaction_date' => now()->toDateString(),
+                'reference_type' => \App\Models\Customer::class,
+                'reference_id' => $customer->id,
+                'notes' => "Manual Wallet {$type} for {$customer->name}" . ($description ? ": $description" : ""),
+                'created_by' => auth()->id(),
+            ]);
+
+            if ($type === 'credit') {
+                // We got money (Cash Debit), and our Liability increased (Wallet Credit)
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $offsetAccount->id,
+                    'debit_amount' => $amount,
+                    'credit_amount' => 0,
+                ]);
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $walletLiabilityAccount->id,
+                    'debit_amount' => 0,
+                    'credit_amount' => $amount,
+                ]);
+            } else {
+                // We deducted money (Wallet Debit - Liability decreases), offset by Cash Credit (We paid them back)
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $walletLiabilityAccount->id,
+                    'debit_amount' => $amount,
+                    'credit_amount' => 0,
+                ]);
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $offsetAccount->id,
+                    'debit_amount' => 0,
+                    'credit_amount' => $amount,
+                ]);
+            }
         });
     }
 }

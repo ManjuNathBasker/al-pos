@@ -22,6 +22,7 @@ use App\Http\Controllers\PurchasePaymentController;
 use App\Http\Controllers\PurchaseReportController;
 use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\InventoryReportController;
+use App\Http\Controllers\WalletReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -83,6 +84,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Administrative Resource Routes
     Route::resource('products', ProductController::class)->middleware('can:view products');
     Route::resource('categories', CategoryController::class)->middleware('can:view products'); // Grouped under products
+    Route::post('/customers/{customer}/wallet/adjust', [CustomerController::class, 'adjustWallet'])->name('customers.wallet.adjust');
     Route::resource('customers', CustomerController::class)->middleware('can:view customers');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::resource('orders', OrderController::class)->middleware('can:view orders');
@@ -138,6 +140,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/reports/inventory-report/export', [InventoryReportController::class, 'export'])->name('reports.inventory.export');
     Route::get('/reports/purchases', [PurchaseReportController::class, 'index'])->name('reports.purchases');
     Route::get('/reports/purchases/export', [PurchaseReportController::class, 'export'])->name('reports.purchases.export');
+    Route::get('/reports/wallet', [WalletReportController::class, 'index'])->name('reports.wallet');
 
     // Accounting & Financial Management Routes
     Route::resource('accounts', App\Http\Controllers\AccountController::class);

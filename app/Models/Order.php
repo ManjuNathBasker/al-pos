@@ -141,6 +141,11 @@ class Order extends Model
         return $this->belongsTo(CardType::class);
     }
 
+    public function walletTransactions()
+    {
+        return $this->hasMany(WalletTransaction::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────
     public function scopePaid($query)
     {

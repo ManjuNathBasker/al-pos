@@ -129,6 +129,67 @@
             </div>
             @endif
         </div>
+
+        {{-- Wallet Transactions Table --}}
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <h3 class="font-semibold text-slate-800">Wallet Transactions</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="py-3 pl-6 pr-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                            <th class="px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Order Ref</th>
+                            <th class="px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                            <th class="px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
+                            <th class="px-3 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 bg-white">
+                        @forelse($walletTransactions as $tx)
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="whitespace-nowrap py-3.5 pl-6 pr-3 text-sm text-slate-500">
+                                {{ $tx->created_at->format('M j, Y') }}
+                                <span class="block text-xs text-slate-400">{{ $tx->created_at->format('g:i a') }}</span>
+                            </td>
+                            <td class="whitespace-nowrap px-3 py-3.5 text-sm font-semibold text-indigo-600">
+                                @if($tx->order)
+                                    <a href="{{ route('orders.show', $tx->order_id) }}" class="hover:underline">{{ $tx->order->order_number }}</a>
+                                @else
+                                    -
+                                @endif
+                            </td>
+                            <td class="whitespace-nowrap px-3 py-3.5 text-sm text-slate-500">
+                                @if($tx->type === 'credit')
+                                    <span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">Credit</span>
+                                @else
+                                    <span class="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">Debit</span>
+                                @endif
+                            </td>
+                            <td class="whitespace-nowrap px-3 py-3.5 text-sm font-semibold {{ $tx->type === 'credit' ? 'text-emerald-600' : 'text-red-600' }}">
+                                {{ $tx->type === 'credit' ? '+' : '-' }}${{ number_format($tx->amount, 2) }}
+                            </td>
+                            <td class="px-3 py-3.5 text-sm text-slate-500">
+                                {{ $tx->description }}
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-10 text-center text-sm text-slate-500">
+                                No wallet transactions found.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if($walletTransactions->hasPages())
+            <div class="border-t border-slate-200 px-4 py-3 sm:px-6">
+                {{ $walletTransactions->links() }}
+            </div>
+            @endif
+        </div>
     </div>
 
     {{-- Right Column: Customer Info --}}
@@ -178,6 +239,43 @@
                     </svg>
                     Search Orders
                 </a>
+            </div>
+        </div>
+
+        {{-- Wallet Adjustment --}}
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <h3 class="font-semibold text-slate-800">Adjust Wallet Balance</h3>
+            </div>
+            <div class="p-6">
+                <form action="{{ route('customers.wallet.adjust', $customer) }}" method="POST">
+                    @csrf
+                    <div class="space-y-4">
+                        <div>
+                            <label for="type" class="block text-sm font-medium text-slate-700">Adjustment Type</label>
+                            <select id="type" name="type" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <option value="credit">Add Funds (Credit)</option>
+                                <option value="debit">Deduct Funds (Debit)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="amount" class="block text-sm font-medium text-slate-700">Amount</label>
+                            <div class="relative mt-1 rounded-md shadow-sm">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <span class="text-slate-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" name="amount" id="amount" step="0.01" min="0.01" required class="block w-full rounded-md border-slate-300 pl-7 pr-12 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-slate-700">Description / Note</label>
+                            <input type="text" name="description" id="description" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="e.g. Manual top-up">
+                        </div>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Process Adjustment
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

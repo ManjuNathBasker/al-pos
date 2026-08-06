@@ -350,6 +350,39 @@
         </div>
         @endif
 
+        {{-- Wallet Transactions (if any) --}}
+        @if($order->walletTransactions && $order->walletTransactions->count() > 0)
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6 hide-on-print">
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <h3 class="font-semibold text-slate-800">Wallet Transactions</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                @foreach($order->walletTransactions as $walletTx)
+                <div class="text-sm space-y-2 {{ !$loop->last ? 'pb-4 border-b border-slate-100' : '' }}">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Type</span>
+                        <span class="font-medium {{ $walletTx->type === 'credit' ? 'text-emerald-600' : 'text-red-600' }}">
+                            {{ ucfirst($walletTx->type) }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between font-semibold">
+                        <span class="text-slate-700">Amount</span>
+                        <span class="{{ $walletTx->type === 'credit' ? 'text-emerald-700' : 'text-red-700' }}">
+                            {{ $walletTx->type === 'credit' ? '+' : '-' }}${{ number_format($walletTx->amount, 2) }}
+                        </span>
+                    </div>
+                    @if($walletTx->description)
+                    <div class="flex flex-col mt-1">
+                        <span class="text-slate-500 text-xs">Description</span>
+                        <span class="text-slate-700">{{ $walletTx->description }}</span>
+                    </div>
+                    @endif
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         @if($order->customer)
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
