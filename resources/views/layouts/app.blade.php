@@ -5,171 +5,162 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'POS Admin') }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    {{-- Vite compiled CSS + JS (includes Alpine.js from app.js) --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- Google Fonts: Inter --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: 'DM Sans', sans-serif; background-color: #f8f9fa; }
+        * { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        body { background-color: #f8fafc; }
+
+        /* Sidebar scrollbar */
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+        /* Nav active state (also defined in app.css @layer) */
+        .nav-active {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            color: #4338ca;
+        }
+        .nav-active svg { color: #4f46e5; }
     </style>
 </head>
 <body class="text-slate-800 antialiased h-screen flex overflow-hidden" x-data="{ sidebarOpen: false }">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col hidden md:flex">
-        <div class="h-16 flex items-center px-6 border-b border-slate-100 font-bold text-lg text-indigo-600 gap-3">
-            <x-application-logo class="w-8 h-8" />
-            <span>{{ config('app.name', 'POS Admin') }}</span>
+
+    {{-- ============================================================
+     SIDEBAR
+    ============================================================ --}}
+    <aside class="w-64 bg-white border-r border-slate-100 flex-col hidden md:flex flex-shrink-0" style="box-shadow: 1px 0 0 0 #f1f5f9;">
+
+        {{-- Brand --}}
+        <div class="h-16 flex items-center px-5 border-b border-slate-100 gap-3 flex-shrink-0">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+            </div>
+            <div class="flex flex-col leading-none">
+                <span class="font-bold text-slate-900 text-sm">{{ config('app.name', 'POS Admin') }}</span>
+                <span class="text-[10px] text-slate-400 font-medium mt-0.5">Management Console</span>
+            </div>
         </div>
+
+        {{-- Navigation --}}
         @include('layouts.navigation')
-        <!-- <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-            <a href="{{ route('pos.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-indigo-50">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2-2v10a2 2 0 002 2z" />
-                </svg>
-                POS Terminal
-            </a>
-            @can('access products')
-            <a href="{{ route('products.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('products.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                Products
-            </a>
-            @endcan
-            @can('access categories')
-            <a href="{{ route('categories.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('categories.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                Categories
-            </a>
-            @endcan
-            @can('access customers')
-            <a href="{{ route('customers.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('customers.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                Customers
-            </a>
-            @endcan
-            @can('access orders')
-            <a href="{{ route('orders.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('orders.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-                Orders
-            </a>
-            @endcan
-            @can('access coupons')
-            <a href="{{ route('coupons.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('coupons.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                Coupons
-            </a>
-            @endcan
-            @can('view companies')
-            <a href="{{ route('companies.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('companies.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" />
-                </svg>
-                Companies
-            </a>
-            @endcan
 
-            @can('view users')
-            <a href="{{ route('users.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('users.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5m10 0H7" />
-                </svg>
-                Users
-            </a>
-            @endcan
-
-            @can('view roles')
-            <a href="{{ route('roles.index') }}" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('roles.*') ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50' }}">
-                <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2" />
-                </svg>
-                Roles
-            </a>
-            @endcan
-        </nav> -->
+        {{-- Sidebar Footer: user info --}}
+        <div class="border-t border-slate-100 px-4 py-4 flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs flex-shrink-0">
+                    {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 2)) }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-slate-800 truncate">{{ auth()->user()->name ?? 'Admin' }}</p>
+                    <p class="text-xs text-slate-400 truncate">{{ auth()->user()->email ?? '' }}</p>
+                </div>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
     </aside>
 
-    <!-- Main Content -->
+    {{-- ============================================================
+     MAIN CONTENT
+    ============================================================ --}}
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center md:hidden gap-2">
-                <x-application-logo class="w-6 h-6" />
-                <h1 class="text-lg font-bold text-indigo-600">{{ config('app.name', 'POS Admin') }}</h1>
+
+        {{-- Top Header --}}
+        <header class="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
+
+            {{-- Mobile brand --}}
+            <div class="flex items-center gap-3 md:hidden">
+                <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <span class="font-bold text-slate-900 text-sm">{{ config('app.name', 'POS Admin') }}</span>
             </div>
-            <div class="flex items-center ml-auto gap-4">
+
+            {{-- Right controls --}}
+            <div class="flex items-center ml-auto gap-3">
+
                 {{-- Company Switcher --}}
                 @php
-                    // Use shared variables from TenantMiddleware
                     $userCompanies = $userCompanies ?? collect();
                     $currentCompany = $currentCompany ?? \App\Models\Company::find(session('company_id'));
                     $initials = $currentCompany ? strtoupper(substr($currentCompany->name, 0, 1)) : 'C';
                 @endphp
 
                 <div x-data="{ open: false }" class="relative z-50">
-                    <button @click="open = !open" @click.away="open = false" class="flex items-center gap-2 hover:bg-slate-50 p-1.5 rounded-lg transition-colors focus:outline-none">
-                        <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                    <button @click="open = !open" @click.away="open = false"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors focus:outline-none border border-transparent hover:border-slate-200">
+                        <div class="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
                             {{ $initials }}
                         </div>
-                        <div class="hidden sm:flex flex-col items-start leading-tight">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Store</span>
-                            <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
-                                {{ $currentCompany->name ?? 'Select Store' }}
-                                <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </span>
+                        <div class="hidden sm:flex flex-col items-start leading-none gap-0.5">
+                            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Store</span>
+                            <span class="text-xs font-semibold text-slate-700">{{ $currentCompany->name ?? 'Select Store' }}</span>
                         </div>
+                        <svg class="w-3.5 h-3.5 text-slate-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
                     </button>
 
-                    <!-- Dropdown -->
-                    <div x-show="open" 
+                    <div x-show="open"
                          x-transition:enter="transition ease-out duration-100"
                          x-transition:enter-start="transform opacity-0 scale-95"
                          x-transition:enter-end="transform opacity-100 scale-100"
                          x-transition:leave="transition ease-in duration-75"
                          x-transition:leave-start="transform opacity-100 scale-100"
                          x-transition:leave-end="transform opacity-0 scale-95"
-                         class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-1"
+                         class="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden py-1"
                          style="display: none;">
-                        
-                        <div class="px-4 py-2 border-b border-slate-50">
-                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Switch Store</p>
+                        <div class="px-4 py-2.5 border-b border-slate-50">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Switch Store</p>
                         </div>
-
                         <div class="max-h-60 overflow-y-auto py-1">
                             @forelse($userCompanies as $company)
                                 <form method="POST" action="{{ route('companies.switch', $company->id) }}">
                                     @csrf
-                                    <button type="submit" class="w-full text-left px-4 py-2 text-sm flex items-center gap-3 hover:bg-indigo-50 transition-colors {{ $currentCompany && $currentCompany->id === $company->id ? 'bg-indigo-50/50' : '' }}">
-                                        <div class="w-6 h-6 rounded bg-{{ $currentCompany && $currentCompany->id === $company->id ? 'indigo' : 'slate' }}-100 text-{{ $currentCompany && $currentCompany->id === $company->id ? 'indigo' : 'slate' }}-600 flex items-center justify-center font-bold text-xs">
+                                    <button type="submit" class="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 hover:bg-slate-50 transition-colors {{ $currentCompany && $currentCompany->id === $company->id ? 'bg-indigo-50/60' : '' }}">
+                                        <div class="w-7 h-7 rounded-lg {{ $currentCompany && $currentCompany->id === $company->id ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500' }} flex items-center justify-center font-bold text-xs flex-shrink-0">
                                             {{ strtoupper(substr($company->name, 0, 1)) }}
                                         </div>
-                                        <span class="font-medium {{ $currentCompany && $currentCompany->id === $company->id ? 'text-indigo-700' : 'text-slate-700' }}">
-                                            {{ $company->name }}
-                                        </span>
+                                        <span class="font-semibold {{ $currentCompany && $currentCompany->id === $company->id ? 'text-indigo-700' : 'text-slate-700' }} flex-1 truncate">{{ $company->name }}</span>
                                         @if($currentCompany && $currentCompany->id === $company->id)
-                                        <svg class="w-4 h-4 text-indigo-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            <svg class="w-4 h-4 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                            </svg>
                                         @endif
                                     </button>
                                 </form>
                             @empty
-                                <div class="px-4 py-3 text-sm text-slate-500 text-center">
-                                    No other stores available.
-                                </div>
+                                <div class="px-4 py-4 text-sm text-slate-400 text-center">No other stores available.</div>
                             @endforelse
                         </div>
                     </div>
                 </div>
 
-                <span class="text-sm font-medium text-slate-600 border-l border-slate-200 pl-4">{{ auth()->user()->name ?? 'Admin' }}</span>
+                <div class="hidden sm:block w-px h-6 bg-slate-200"></div>
+                <span class="hidden sm:block text-sm font-semibold text-slate-600">{{ auth()->user()->name ?? 'Admin' }}</span>
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="text-slate-400 hover:text-red-500 transition-colors" title="Logout">
+                    <button type="submit" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
@@ -178,22 +169,54 @@
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
+        {{-- Main Content Area --}}
+        <div class="flex-1 overflow-y-auto bg-slate-50 p-5 sm:p-6 lg:p-8">
+
+            {{-- Flash Messages --}}
             @if(session('success'))
-                <div class="mb-6 p-4 rounded-lg bg-green-50 border-l-4 border-green-500 text-green-700">
-                    {{ session('success') }}
+                <div x-data="{ show: true }" x-show="show"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     class="mb-6 flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800">
+                    <div class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <p class="text-sm font-semibold flex-1">{{ session('success') }}</p>
+                    <button @click="show = false" class="text-emerald-400 hover:text-emerald-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
             @endif
 
             @if(session('error'))
-                <div class="mb-6 p-4 rounded-lg bg-red-50 border-l-4 border-red-500 text-red-700">
-                    {{ session('error') }}
+                <div x-data="{ show: true }" x-show="show"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     class="mb-6 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-800">
+                    <div class="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </div>
+                    <p class="text-sm font-semibold flex-1">{{ session('error') }}</p>
+                    <button @click="show = false" class="text-red-400 hover:text-red-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
             @endif
 
             @yield('content')
         </div>
     </main>
+
     @stack('scripts')
 </body>
 </html>
