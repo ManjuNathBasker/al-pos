@@ -8,7 +8,7 @@
             <h1 class="text-xl font-bold text-slate-800">Inventory Management</h1>
             <p class="text-xs text-slate-400">Track and manage your ingredients and raw materials</p>
         </div>
-        <button @click="showAddModal = true" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
+        <button @click="showAddModal = true" class="btn-brand text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center shadow-sm transition-all">
             <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
@@ -104,7 +104,7 @@
                                     @endif
                                 </td>
                                 <td class="px-8 py-5 text-right">
-                                    <button @click="selectedItem = {{ json_encode($item) }}; showEditModal = true" class="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                                    <button @click="selectedItem = {{ json_encode($item) }}; showEditModal = true" class="w-[34px] h-[34px] rounded-lg border border-[#E5E7EB] bg-white hover:bg-orange-50 text-[#64748B] hover:text-[#F5703E] hover:border-orange-200 flex items-center justify-center transition-colors">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                     </button>
                                 </td>
@@ -157,7 +157,7 @@
                 @csrf
                 <div>
                     <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-4">Item Name</label>
-                    <input type="text" name="name" required class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all" placeholder="e.g. Chicken Patty">
+                    <input type="text" name="name" required class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-orange-100 transition-all" placeholder="e.g. Chicken Patty">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -191,7 +191,7 @@
                 </div>
                 <div class="pt-4 flex gap-4">
                     <button type="button" @click="showAddModal = false" class="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors">Cancel</button>
-                    <button type="submit" class="flex-1 bg-indigo-600 text-white rounded-2xl py-4 font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">SAVE ITEM</button>
+                    <button type="submit" class="flex-1 btn-brand text-white rounded-2xl py-4 font-black shadow-sm transition-all">SAVE ITEM</button>
                 </div>
             </form>
         </div>
@@ -224,7 +224,7 @@
                 </div>
                 <div class="pt-4 flex gap-4">
                     <button type="button" @click="showEditModal = false" class="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors">Cancel</button>
-                    <button type="submit" class="flex-1 bg-indigo-600 text-white rounded-2xl py-4 font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">UPDATE ITEM</button>
+                    <button type="submit" class="flex-1 btn-brand text-white rounded-2xl py-4 font-black shadow-sm transition-all">UPDATE ITEM</button>
                 </div>
             </form>
         </div>

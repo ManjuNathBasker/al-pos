@@ -3,97 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $table->name }} | Digital Menu</title>
+    <title>{{ $table->name }} | Waiter Order Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
-        body { font-family: 'Outfit', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+        .glass-nav { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(12px); }
         [x-cloak] { display: none !important; }
+        .brand-accent { background-color: #F5703E; }
+        .brand-text { color: #F5703E; }
+        .brand-border { border-color: #F5703E; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 pb-24" x-data="guestApp()" x-cloak>
-    <!-- Header -->
-    <header class="sticky top-0 z-40 glass border-b border-white px-6 py-4 flex items-center justify-between">
-        <div>
-            <h1 class="text-xl font-black text-slate-800 uppercase tracking-tighter">Waiter Panel</h1>
-            <div class="flex items-center gap-2 mt-1">
-                <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{{ $table->name }} • {{ $table->section->name }}</p>
-                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase border border-slate-200" x-text="tableData.status"></span>
-                <button @click="openStatusModal()" class="text-indigo-500 hover:text-indigo-700 p-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                </button>
+<body class="bg-gray-50 text-gray-900 pb-28 antialiased min-h-screen" x-data="guestApp()" x-init="init()" x-cloak>
+
+    {{-- ════════════════════════════════════════════════════════════
+         TOP APP HEADER
+    ════════════════════════════════════════════════════════════ --}}
+    <header class="sticky top-0 z-40 glass-nav border-b border-gray-200/80 px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-3">
+            <a href="{{ route('waiter.index') }}" class="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-lg text-white font-black text-xs flex items-center justify-center shadow-xs" style="background-color: #F5703E;">
+                        {{ $table->name }}
+                    </span>
+                    <h1 class="text-base font-black text-gray-900 tracking-tight">{{ $table->name }} <span class="text-xs font-semibold text-gray-400">({{ $table->section->name }})</span></h1>
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                          :class="{
+                              'bg-emerald-50 text-emerald-700 border border-emerald-200': tableData.status === 'available',
+                              'bg-orange-50 text-brand-700 border border-brand-200': tableData.status === 'occupied',
+                              'bg-blue-50 text-blue-700 border border-blue-200': tableData.status === 'reserved',
+                              'bg-gray-100 text-gray-700 border border-gray-200': tableData.status === 'cleaning'
+                          }"
+                          x-text="tableData.status"></span>
+                    <button @click="openStatusModal()" class="text-xs font-bold text-gray-400 hover:text-gray-700 flex items-center gap-1">
+                        <svg class="w-3 h-3 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        <span>Status</span>
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="flex gap-3">
-            <button @click="showTracking = true" class="p-2 bg-indigo-50 rounded-full text-indigo-600 relative">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+        {{-- Order Tracker Trigger --}}
+        <div class="flex items-center gap-2">
+            <button @click="showTracking = true"
+                    class="px-3.5 py-2 rounded-2xl bg-white border border-gray-200 hover:bg-gray-50 text-gray-800 text-xs font-black shadow-xs flex items-center gap-2 relative transition-all">
+                <svg class="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
+                <span>Live Kitchen</span>
                 <template x-if="activeOrder">
-                    <span class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></span>
+                    <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
                 </template>
             </button>
         </div>
     </header>
 
-    <!-- Categories Scroll -->
-    <div class="sticky top-[73px] z-30 glass py-4 px-6 overflow-x-auto no-scrollbar flex gap-3 border-b border-slate-100">
-        <button @click="activeCategory = 'all'" :class="activeCategory === 'all' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-slate-500 border border-slate-200'" class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all">
-            All Items
+    {{-- ════════════════════════════════════════════════════════════
+         CATEGORIES SCROLL TABS
+    ════════════════════════════════════════════════════════════ --}}
+    <div class="sticky top-[61px] z-30 glass-nav py-3 px-4 sm:px-6 overflow-x-auto no-scrollbar flex items-center gap-2 border-b border-gray-200/80">
+        <button @click="activeCategory = 'all'"
+            :class="activeCategory === 'all' ? 'text-white shadow-md shadow-brand-500/20' : 'bg-white text-gray-600 border border-gray-200/90 hover:bg-gray-100'"
+            :style="activeCategory === 'all' ? 'background-color: #F5703E;' : ''"
+            class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black transition-all">
+            🍽️ All Items
         </button>
         @foreach($categories as $category)
-            <button @click="activeCategory = '{{ $category->id }}'" :class="activeCategory === '{{ $category->id }}' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-slate-500 border border-slate-200'" class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all">
+            <button @click="activeCategory = '{{ $category->id }}'"
+                :class="activeCategory === '{{ $category->id }}' ? 'text-white shadow-md shadow-brand-500/20' : 'bg-white text-gray-600 border border-gray-200/90 hover:bg-gray-100'"
+                :style="activeCategory === '{{ $category->id }}' ? 'background-color: #F5703E;' : ''"
+                class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black transition-all">
                 {{ $category->name }}
             </button>
         @endforeach
     </div>
 
-    <!-- Menu Items -->
-    <main class="px-6 py-8 space-y-10">
+    {{-- ════════════════════════════════════════════════════════════
+         MENU PRODUCTS GRID
+    ════════════════════════════════════════════════════════════ --}}
+    <main class="px-4 sm:px-6 py-6 space-y-8 max-w-7xl mx-auto">
         @foreach($categories as $category)
-            <section x-show="activeCategory === 'all' || activeCategory === '{{ $category->id }}'">
-                <h2 class="text-2xl font-black text-slate-800 mb-6">{{ $category->name }}</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <section x-show="activeCategory === 'all' || activeCategory === '{{ $category->id }}'" class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full" style="background-color: #F5703E;"></span>
+                        {{ $category->name }}
+                    </h2>
+                    <span class="text-xs font-bold text-gray-400">{{ $products->where('category_id', $category->id)->count() }} items</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     @foreach($products->where('category_id', $category->id) as $product)
-                        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                            <div class="w-full sm:w-28 h-48 sm:h-28 bg-slate-100 rounded-2xl flex-shrink-0 overflow-hidden relative group">
-                                @if($product->image)
-                                    <img src="{{ str_starts_with($product->image, 'http') ? $product->image : asset('storage/' . $product->image) }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.src='https://placehold.co/400x400?text=Food'">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center text-slate-300">
-                                        <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="flex-1 flex flex-col justify-between">
-                                <div>
-                                    <h3 class="font-bold text-slate-800 leading-tight">{{ $product->name }}</h3>
-                                    <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ $product->description }}</p>
+                        <div class="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80 flex flex-col justify-between hover:shadow-md transition-all">
+                            <div class="flex gap-3.5">
+                                {{-- Product Thumbnail --}}
+                                <div class="w-20 h-20 bg-gray-100 rounded-2xl flex-shrink-0 overflow-hidden relative border border-gray-100">
+                                    @if($product->image)
+                                        <img src="{{ str_starts_with($product->image, 'http') ? $product->image : asset('storage/' . $product->image) }}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/400x400?text=Food'">
+                                    @else
+                                        <div class="w-full h-full flex items-center justify-center text-gray-300">
+                                            <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                    @endif
                                 </div>
-                                <div class="flex items-center justify-between mt-2">
-                                    <span class="font-black text-lg text-slate-800">₹{{ number_format($product->price, 2) }}</span>
-                                    
-                                    <div class="flex items-center gap-2">
-                                        <template x-if="isInCart({{ $product->id }})">
-                                            <div class="flex items-center gap-3 bg-indigo-50 rounded-full px-2 py-1">
-                                                <button @click="updateQty({{ $product->id }}, -1)" class="w-8 h-8 flex items-center justify-center text-indigo-600 font-bold">-</button>
-                                                <span class="text-sm font-bold text-indigo-600" x-text="getQty({{ $product->id }})"></span>
-                                                <button @click="updateQty({{ $product->id }}, 1)" class="w-8 h-8 flex items-center justify-center text-indigo-600 font-bold">+</button>
-                                            </div>
-                                        </template>
-                                        <template x-if="!isInCart({{ $product->id }})">
-                                            <button @click="addToCart({ id: {{ $product->id }}, name: '{{ $product->name }}', price: {{ $product->price }} })" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-100 active:scale-95 transition-transform">
-                                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                </svg>
-                                            </button>
-                                        </template>
-                                    </div>
+
+                                {{-- Product Info --}}
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-bold text-gray-900 text-sm leading-snug line-clamp-1">{{ $product->name }}</h3>
+                                    <p class="text-xs text-gray-400 mt-0.5 line-clamp-2">{{ $product->description ?: 'Delicious freshly prepared dish' }}</p>
+                                    <span class="text-xs font-bold text-gray-400 mt-1 block">SKU: {{ $product->sku ?: 'ITM-'.$product->id }}</span>
+                                </div>
+                            </div>
+
+                            {{-- Bottom Price & Stepper Action --}}
+                            <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
+                                <span class="font-black text-base text-gray-900">₹{{ number_format($product->price, 2) }}</span>
+
+                                <div class="flex items-center gap-2">
+                                    <template x-if="isInCart({{ $product->id }})">
+                                        <div class="flex items-center gap-2 bg-orange-50 border border-brand-200 rounded-xl px-2 py-1">
+                                            <button @click="updateQty({{ $product->id }}, -1)"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white rounded-lg text-brand-700 font-black text-sm shadow-xs hover:bg-orange-100 transition-colors">-</button>
+                                            <span class="text-xs font-black text-brand-900 px-1" x-text="getQty({{ $product->id }})"></span>
+                                            <button @click="updateQty({{ $product->id }}, 1)"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white rounded-lg text-brand-700 font-black text-sm shadow-xs hover:bg-orange-100 transition-colors">+</button>
+                                        </div>
+                                    </template>
+                                    <template x-if="!isInCart({{ $product->id }})">
+                                        <button @click="addToCart({ id: {{ $product->id }}, name: '{{ $product->name }}', price: {{ $product->price }} })"
+                                                class="px-3.5 py-1.5 text-white rounded-xl flex items-center gap-1.5 text-xs font-black shadow-md shadow-brand-500/20 active:scale-95 transition-all"
+                                                style="background-color: #F5703E;">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            <span>Add</span>
+                                        </button>
+                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -103,206 +158,235 @@
         @endforeach
     </main>
 
-    <!-- Floating Cart Bar -->
-    <div x-show="cart.length > 0" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0" class="fixed bottom-6 left-6 right-6 z-50">
-        <button @click="showCheckout = true" class="w-full bg-slate-900 text-white rounded-3xl py-4 px-8 flex items-center justify-between shadow-2xl active:scale-[0.98] transition-transform">
-            <div class="flex items-center gap-4">
+    {{-- ════════════════════════════════════════════════════════════
+         FLOATING BOTTOM CART STRIP
+    ════════════════════════════════════════════════════════════ --}}
+    <div x-show="cart.length > 0"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         class="fixed bottom-5 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50">
+        <button @click="showCheckout = true"
+                class="w-full bg-gray-900 hover:bg-black text-white rounded-3xl py-3.5 px-5 flex items-center justify-between shadow-2xl active:scale-[0.98] transition-all border border-gray-800">
+            <div class="flex items-center gap-3">
                 <div class="relative">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 11-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    <span class="absolute -top-2 -right-2 bg-indigo-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center ring-4 ring-slate-900" x-text="cartCount"></span>
+                    <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-white" style="background-color: #F5703E;">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 11-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                    </div>
+                    <span class="absolute -top-1.5 -right-1.5 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-gray-900"
+                          style="background-color: #F5703E;"
+                          x-text="cartCount"></span>
                 </div>
                 <div class="text-left">
-                    <span class="block text-xs font-bold text-slate-400 uppercase tracking-widest">VIEW ORDER</span>
-                    <span class="text-base font-black" x-text="'₹' + cartTotal.toFixed(2)"></span>
+                    <span class="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">ORDER SUMMARY</span>
+                    <span class="text-base font-black text-white" x-text="'₹' + cartTotal.toFixed(2)"></span>
                 </div>
             </div>
-            <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+            <div class="flex items-center gap-1.5 text-xs font-black text-orange-400">
+                <span>Review & Send</span>
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                </svg>
+            </div>
         </button>
     </div>
 
-    <!-- Checkout Modal -->
+    {{-- ════════════════════════════════════════════════════════════
+         CHECKOUT & ORDER CONFIRMATION MODAL
+    ════════════════════════════════════════════════════════════ --}}
     <div x-show="showCheckout" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 sm:p-6" x-cloak>
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showCheckout = false"></div>
-        <div class="relative w-full max-w-lg bg-white rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden shadow-2xl" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full sm:translate-y-10 sm:opacity-0" x-transition:enter-end="translate-y-0 sm:translate-y-0 sm:opacity-100">
-            <div class="px-8 pt-10 pb-6 text-center border-b border-slate-50">
-                <h3 class="text-2xl font-black text-slate-800">Review Your Order</h3>
-                <p class="text-sm text-slate-400 mt-1">Check your items before sending to kitchen</p>
+        <div class="fixed inset-0 bg-gray-950/60 backdrop-blur-sm" @click="showCheckout = false"></div>
+        <div class="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="translate-y-full sm:translate-y-8 sm:opacity-0"
+             x-transition:enter-end="translate-y-0 sm:translate-y-0 sm:opacity-100">
+
+            {{-- Modal Header --}}
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-black text-gray-900">Review Table Order</h3>
+                    <p class="text-xs text-gray-400 font-semibold mt-0.5">Send selected items to kitchen KDS station</p>
+                </div>
+                <button @click="showCheckout = false" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold transition-colors">
+                    ✕
+                </button>
             </div>
-            
-            <div class="px-8 py-6 max-h-[50vh] overflow-y-auto space-y-4">
+
+            {{-- Cart Items --}}
+            <div class="px-6 py-5 max-h-[50vh] overflow-y-auto space-y-3">
                 <template x-for="item in cart" :key="item.id">
-                    <div class="flex items-center justify-between bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                    <div class="flex items-center justify-between bg-gray-50 p-3.5 rounded-2xl border border-gray-200/70">
                         <div>
-                            <p class="font-bold text-slate-800" x-text="item.name"></p>
-                            <p class="text-xs text-slate-400" x-text="'₹' + item.price.toFixed(2) + ' x ' + item.qty"></p>
+                            <p class="font-bold text-gray-900 text-xs" x-text="item.name"></p>
+                            <p class="text-[11px] text-gray-400 font-semibold mt-0.5" x-text="'₹' + item.price.toFixed(2) + ' × ' + item.qty"></p>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <button @click="updateQty(item.id, -1)" class="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold">-</button>
-                            <span class="text-sm font-bold text-slate-800" x-text="item.qty"></span>
-                            <button @click="updateQty(item.id, 1)" class="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold">+</button>
+                        <div class="flex items-center gap-2">
+                            <button @click="updateQty(item.id, -1)" class="w-7 h-7 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-gray-700 font-bold text-xs shadow-xs hover:bg-gray-100">-</button>
+                            <span class="text-xs font-black text-gray-900 w-5 text-center" x-text="item.qty"></span>
+                            <button @click="updateQty(item.id, 1)" class="w-7 h-7 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-gray-700 font-bold text-xs shadow-xs hover:bg-gray-100">+</button>
                         </div>
                     </div>
                 </template>
             </div>
 
-            <div class="px-8 pt-4 pb-10 bg-white">
-                <div class="flex items-center justify-between mb-6">
-                    <span class="text-lg font-bold text-slate-400">Total Amount</span>
-                    <span class="text-3xl font-black text-slate-900" x-text="'₹' + cartTotal.toFixed(2)"></span>
+            {{-- Footer Summary & Confirm Button --}}
+            <div class="px-6 py-5 bg-gray-50 border-t border-gray-100 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Bill Amount</span>
+                    <span class="text-2xl font-black text-gray-900" x-text="'₹' + cartTotal.toFixed(2)"></span>
                 </div>
-                <button @click="placeOrder()" :disabled="isPlacing" class="w-full bg-indigo-600 text-white rounded-3xl py-5 font-black text-lg shadow-xl shadow-indigo-100 active:scale-[0.98] transition-all disabled:opacity-50">
-                    <span x-show="!isPlacing">CONFIRM ORDER</span>
-                    <span x-show="isPlacing">PLACING ORDER...</span>
+                <button @click="placeOrder()" :disabled="isPlacing"
+                        class="w-full text-white rounded-2xl py-3.5 font-black text-sm shadow-xl shadow-brand-500/25 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        style="background-color: #F5703E;">
+                    <span x-show="!isPlacing">🚀 SEND ORDER TO KITCHEN</span>
+                    <span x-show="isPlacing">SENDING TO KITCHEN...</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Order Tracking Modal -->
+    {{-- ════════════════════════════════════════════════════════════
+         LIVE KITCHEN TRACKING DRAWER
+    ════════════════════════════════════════════════════════════ --}}
     <div x-show="showTracking" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-6" x-cloak>
-        <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-md" @click="showTracking = false"></div>
-        <div class="relative w-full max-w-lg bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl transition-all" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
-            <!-- Indicator for mobile swipe -->
-            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2 sm:hidden"></div>
-            
-            <div class="px-8 pt-6 pb-6 bg-white border-b border-slate-50">
-                <div class="flex justify-between items-start mb-6">
-                    <div>
-                        <h3 class="text-2xl font-black text-slate-800">Table Orders</h3>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Real-time updates</p>
-                    </div>
-                    <button @click="showTracking = false" class="p-3 bg-slate-50 rounded-2xl text-slate-400">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
+        <div class="fixed inset-0 bg-gray-950/70 backdrop-blur-sm" @click="showTracking = false"></div>
+        <div class="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl transition-all border border-gray-100"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="translate-y-full"
+             x-transition:enter-end="translate-y-0">
+
+            <div class="px-6 py-5 bg-white border-b border-gray-100 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-black text-gray-900">Table Orders & Kitchen Status</h3>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Real-time KDS synchronization</p>
                 </div>
-                
-                <template x-if="activeOrder">
-                    <div class="relative overflow-hidden bg-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-indigo-100">
-                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
-                        
-                        <div class="relative flex items-center gap-5">
-                            <div class="w-16 h-16 rounded-2xl flex items-center justify-center bg-white/10 backdrop-blur-sm border border-white/10">
-                                <template x-if="activeOrder.kitchen_status === 'pending'">
-                                    <svg class="w-8 h-8 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                </template>
-                                <template x-if="activeOrder.kitchen_status === 'preparing'">
-                                    <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                </template>
-                                <template x-if="activeOrder.kitchen_status === 'ready'">
-                                    <svg class="w-8 h-8 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                </template>
-                                <template x-if="activeOrder.kitchen_status === 'served'">
-                                    <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                </template>
-                            </div>
-                            <div>
-                                <p class="text-xs font-bold text-indigo-100 uppercase tracking-widest mb-1">Status</p>
-                                <p class="text-xl font-black uppercase tracking-wide" x-text="activeOrder.kitchen_status"></p>
-                            </div>
-                        </div>
-                    </div>
-                </template>
+                <button @click="showTracking = false" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold">
+                    ✕
+                </button>
             </div>
 
-            <div class="px-8 py-8 bg-white max-h-[50vh] overflow-y-auto space-y-6">
+            <div class="p-6 max-h-[60vh] overflow-y-auto space-y-5">
                 <template x-if="activeOrder">
-                    <div>
-                        <div class="space-y-6 mb-8">
+                    <div class="space-y-4">
+                        {{-- Status Banner --}}
+                        <div class="p-4 rounded-2xl text-white shadow-md flex items-center justify-between"
+                             style="background-color: #F5703E;">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                                    <template x-if="activeOrder.kitchen_status === 'pending'">
+                                        <svg class="w-5 h-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </template>
+                                    <template x-if="activeOrder.kitchen_status === 'preparing'">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                    </template>
+                                    <template x-if="activeOrder.kitchen_status === 'ready'">
+                                        <svg class="w-5 h-5 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    </template>
+                                    <template x-if="activeOrder.kitchen_status === 'served'">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </template>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-extrabold uppercase tracking-wider text-orange-100">Kitchen State</p>
+                                    <p class="text-base font-black uppercase tracking-wide" x-text="activeOrder.kitchen_status"></p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white"
+                                  x-text="activeOrder.status"></span>
+                        </div>
+
+                        {{-- Item list --}}
+                        <div class="space-y-2.5">
                             <template x-for="item in activeOrder.items" :key="item.id">
-                                <div class="flex justify-between items-center group">
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-2 h-2 rounded-full bg-slate-200 group-hover:bg-indigo-400 transition-colors"></div>
+                                <div class="flex justify-between items-center p-3 rounded-2xl bg-gray-50 border border-gray-200/70">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="w-2 h-2 rounded-full bg-brand-500"></span>
                                         <div>
-                                            <p class="font-bold text-slate-800" x-text="item.product_name"></p>
-                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" x-text="'QTY: ' + item.quantity"></p>
+                                            <p class="font-bold text-gray-900 text-xs" x-text="item.product_name"></p>
+                                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider" x-text="'QTY: ' + item.quantity"></p>
                                         </div>
                                     </div>
-                                    <div class="flex items-center gap-4">
-                                        <span class="font-black text-slate-900" x-text="'₹' + parseFloat(item.subtotal).toFixed(2)"></span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="font-black text-xs text-gray-900" x-text="'₹' + parseFloat(item.subtotal).toFixed(2)"></span>
                                         <template x-if="item.kitchen_status === 'pending'">
-                                            <button @click="removeItem(item.id)" class="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors">
-                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            <button @click="removeItem(item.id)" class="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                             </button>
-                                        </template>
-                                        <template x-if="item.kitchen_status !== 'pending'">
-                                            <span class="text-[8px] font-black uppercase tracking-tighter px-2 py-1 bg-amber-50 text-amber-600 rounded-lg" x-text="item.kitchen_status"></span>
                                         </template>
                                     </div>
                                 </div>
                             </template>
                         </div>
 
+                        {{-- Actions: Cancel or Complete --}}
+                        <div class="pt-3 border-t border-gray-100 space-y-2">
+                            <template x-if="activeOrder.kitchen_status === 'pending'">
+                                <button @click="cancelOrder()" class="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl border border-red-200 transition-colors flex items-center justify-center gap-2 text-xs">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    <span>Cancel Entire Order</span>
+                                </button>
+                            </template>
 
-                        <template x-if="activeOrder.kitchen_status === 'pending'">
-                            <button @click="cancelOrder()" class="w-full py-4 bg-slate-50 text-red-500 font-bold rounded-2xl border border-red-100 hover:bg-red-50 transition-colors flex items-center justify-center gap-2 mb-4">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                CANCEL ENTIRE ORDER
-                            </button>
-                        </template>
-
-                        <template x-if="activeOrder.status === 'paid'">
-                            <button @click="completeOrder()" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 mb-4">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                COMPLETE & CLOSE ORDER
-                            </button>
-                        </template>
-                        
-                        <p class="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                            WAITER CONTROL PANEL
-                        </p>
+                            <template x-if="activeOrder.status === 'paid'">
+                                <button @click="completeOrder()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-2 text-xs">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    <span>Complete & Free Table</span>
+                                </button>
+                            </template>
+                        </div>
                     </div>
                 </template>
-                
+
                 <template x-if="!activeOrder">
-                    <div class="text-center py-12">
-                        <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-10 h-10 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 11-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
-                        </div>
-                        <p class="text-slate-400 font-bold uppercase tracking-widest text-xs">No active orders</p>
+                    <div class="text-center py-10">
+                        <div class="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-3 text-2xl">🍽️</div>
+                        <p class="text-gray-700 font-bold text-sm">No active order for this table</p>
+                        <p class="text-xs text-gray-400 mt-0.5">Select menu items and click Send to Kitchen</p>
                     </div>
                 </template>
             </div>
         </div>
     </div>
 
-    <!-- Status Modal -->
+    {{-- ════════════════════════════════════════════════════════════
+         UPDATE TABLE STATUS MODAL
+    ════════════════════════════════════════════════════════════ --}}
     <div x-show="isStatusModalOpen" class="fixed inset-0 z-[70] flex items-center justify-center p-4" style="display: none;">
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="isStatusModalOpen = false"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" @click.stop>
-            <div class="p-6 border-b border-slate-100">
-                <h3 class="text-xl font-bold text-slate-800">Update Table Status</h3>
+        <div class="fixed inset-0 bg-gray-950/60 backdrop-blur-sm" @click="isStatusModalOpen = false"></div>
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-100" @click.stop>
+            <div class="p-5 border-b border-gray-100">
+                <h3 class="text-base font-black text-gray-900">Update Table Status</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Change real-time occupancy state</p>
             </div>
-            <div class="p-6 space-y-4">
+            <div class="p-5 space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                    <select x-model="modalData.status" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <label class="block text-xs font-bold text-gray-700 mb-1.5">Status</label>
+                    <select x-model="modalData.status" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold text-gray-800 focus:outline-none focus:border-brand-500">
                         <option value="available">Available</option>
                         <option value="occupied">Occupied</option>
                         <option value="reserved">Reserved</option>
                         <option value="cleaning">Cleaning</option>
                     </select>
                 </div>
-                
+
                 <template x-if="modalData.status === 'reserved'">
-                    <div class="space-y-4">
+                    <div class="space-y-3">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Customer Name (Optional)</label>
-                            <input type="text" x-model="modalData.customer_name" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. John Doe">
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Customer Name (Optional)</label>
+                            <input type="text" x-model="modalData.customer_name" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-brand-500" placeholder="e.g. John Doe">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Phone Number (Optional)</label>
-                            <input type="text" x-model="modalData.customer_phone" class="w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. 9876543210">
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Phone Number (Optional)</label>
+                            <input type="text" x-model="modalData.customer_phone" class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-brand-500" placeholder="e.g. 9876543210">
                         </div>
                     </div>
                 </template>
             </div>
-            <div class="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                <button @click="isStatusModalOpen = false" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-                <button @click="saveStatus()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700" :disabled="isSavingStatus" x-text="isSavingStatus ? 'Saving...' : 'Save Changes'"></button>
+            <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-2.5">
+                <button @click="isStatusModalOpen = false" class="px-4 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100">Cancel</button>
+                <button @click="saveStatus()" class="px-4 py-2 text-xs font-black text-white rounded-xl shadow-md shadow-brand-500/20" style="background-color: #F5703E;" :disabled="isSavingStatus" x-text="isSavingStatus ? 'Saving...' : 'Save Changes'"></button>
             </div>
         </div>
     </div>
@@ -334,7 +418,7 @@
                 get cartTotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0); },
 
                 isInCart(id) { return this.cart.some(i => i.id === id); },
-                getQty(id) { 
+                getQty(id) {
                     const item = this.cart.find(i => i.id === id);
                     return item ? item.qty : 0;
                 },
@@ -505,7 +589,6 @@
                 },
 
                 init() {
-                    // Refresh status every 10 seconds
                     setInterval(() => this.refreshStatus(), 10000);
                 }
             }

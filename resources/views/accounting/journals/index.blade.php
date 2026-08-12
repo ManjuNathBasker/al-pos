@@ -1,112 +1,139 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-        <h2 class="text-2xl font-bold text-slate-800">Journal Entries</h2>
-        <p class="mt-1 text-sm text-slate-500">View and create manual journal entries.</p>
+<div class="space-y-6">
+
+    {{-- Page Header --}}
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-semibold text-[#172033] tracking-tight">Journal Entries</h1>
+            <p class="text-sm text-[#64748B] mt-0.5">View and create manual double-entry journal entries.</p>
+        </div>
+        <button @click="$dispatch('open-modal', 'add-journal')" 
+                class="btn-brand h-11 px-4 rounded-lg text-white text-sm font-medium transition-colors shadow-sm inline-flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <span>New Journal Entry</span>
+        </button>
     </div>
-    <button @click="$dispatch('open-modal', 'add-journal')" class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-600">
-        <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        New Journal Entry
-    </button>
+
+    {{-- Entries Table --}}
+    <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50/75 border-b border-[#E5E7EB]">
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Date</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Journal #</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Notes / Lines</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB]">
+                    @forelse($entries as $entry)
+                    <tr class="hover:bg-[#FFF8F5] transition-colors">
+                        <td class="py-4 px-4 text-xs font-medium text-[#172033]">{{ $entry->transaction_date->format('M d, Y') }}</td>
+                        <td class="py-4 px-4">
+                            <span class="text-sm font-bold font-mono text-[#172033]">{{ $entry->journal_number }}</span>
+                        </td>
+                        <td class="py-4 px-4">
+                            <div class="text-xs font-semibold text-[#172033]">{{ $entry->notes }}</div>
+                            <div class="text-[11px] text-[#64748B] mt-1 space-y-0.5">
+                                @foreach($entry->items as $item)
+                                <div class="flex gap-2">
+                                    <span class="font-medium">{{ $item->account->account_name }}:</span>
+                                    @if($item->debit_amount > 0)
+                                        <span class="text-blue-600 font-mono">DR ₹{{ number_format($item->debit_amount, 2) }}</span>
+                                    @endif
+                                    @if($item->credit_amount > 0)
+                                        <span class="text-[#29AB6C] font-mono">CR ₹{{ number_format($item->credit_amount, 2) }}</span>
+                                    @endif
+                                </div>
+                                @endforeach
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 text-sm font-mono font-bold text-[#172033] text-right">₹{{ number_format($entry->items->sum('debit_amount'), 2) }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="4" class="py-16 text-center">
+                            <div class="w-12 h-12 rounded-xl bg-orange-50 text-[#F5703E] flex items-center justify-center text-xl mx-auto mb-3 border border-orange-100">📋</div>
+                            <h3 class="text-sm font-bold text-[#172033]">No journal entries found</h3>
+                            <p class="text-xs text-[#64748B] mt-1">Create manual double-entry records for accounting adjustments.</p>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($entries->hasPages())
+        <div class="px-5 py-3.5 border-t border-[#E5E7EB] bg-slate-50/50">{{ $entries->links() }}</div>
+        @endif
+    </div>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-slate-50/50 border-b border-slate-100">
-                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Journal #</th>
-                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Notes / Reference</th>
-                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                @forelse($entries as $entry)
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                    <td class="px-6 py-4 text-sm text-slate-600">{{ $entry->transaction_date->format('M d, Y') }}</td>
-                    <td class="px-6 py-4 font-semibold text-slate-900">{{ $entry->journal_number }}</td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm text-slate-900">{{ $entry->notes }}</div>
-                        <div class="text-xs text-slate-500 mt-1">
-                            @foreach($entry->items as $item)
-                                <span class="{{ $item->debit_amount > 0 ? 'text-indigo-600' : 'text-slate-500' }}">
-                                    {{ $item->account->account_name }}: 
-                                    @if($item->debit_amount > 0) DR ${{ number_format($item->debit_amount, 2) }} @endif
-                                    @if($item->credit_amount > 0) CR ${{ number_format($item->credit_amount, 2) }} @endif
-                                </span><br>
-                            @endforeach
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-sm font-medium text-slate-900">
-                        ${{ number_format($entry->items->sum('debit_amount'), 2) }}
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="4" class="px-6 py-12 text-center text-slate-500">No journal entries found.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-    @if($entries->hasPages())
-    <div class="p-6 border-t border-slate-100 bg-slate-50/50">
-        {{ $entries->links() }}
-    </div>
-    @endif
-</div>
-
-{{-- Add Modal --}}
+{{-- Add Journal Entry Modal --}}
 <x-modal name="add-journal" focusable maxWidth="4xl">
     <form action="{{ route('journal-entries.store') }}" method="POST" class="p-6" x-data="{ items: [{id: 1}, {id: 2}] }">
         @csrf
-        <h2 class="text-lg font-bold text-slate-800 mb-6 border-b pb-4">Create Journal Entry</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div class="border-b border-[#E5E7EB] pb-3 mb-5">
+            <h2 class="text-base font-semibold text-[#172033]">Create Journal Entry</h2>
+            <p class="text-xs text-[#64748B] mt-0.5">Add a manual double-entry accounting record</p>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Transaction Date *</label>
-                <input type="date" name="transaction_date" value="{{ date('Y-m-d') }}" required class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
+                <label class="block text-xs font-semibold text-[#172033]">Transaction Date <span class="text-[#FF4848]">*</span></label>
+                <input type="date" name="transaction_date" value="{{ date('Y-m-d') }}" required
+                       class="mt-1 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Notes / Description *</label>
-                <textarea name="notes" required rows="2" class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all"></textarea>
+                <label class="block text-xs font-semibold text-[#172033]">Notes / Description <span class="text-[#FF4848]">*</span></label>
+                <textarea name="notes" required rows="2" placeholder="e.g. Monthly depreciation adjustment"
+                          class="mt-1 w-full p-3 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]"></textarea>
             </div>
         </div>
 
-        <h3 class="text-sm font-bold text-slate-800 mb-4">Journal Items</h3>
-        <template x-for="(item, index) in items" :key="item.id">
-            <div class="flex gap-4 mb-4 items-center">
-                <div class="flex-1">
-                    <select x-bind:name="'items['+index+'][account_id]'" required class="w-full bg-slate-50 border-none rounded-2xl px-6 py-3 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
-                        <option value="">Select Account</option>
-                        @foreach($accounts as $acc)
-                            <option value="{{ $acc->id }}">{{ $acc->account_name }} ({{ $acc->account_type }})</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="w-32">
-                    <input type="number" step="0.01" x-bind:name="'items['+index+'][debit_amount]'" placeholder="Debit" value="0.00" required class="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
-                </div>
-                <div class="w-32">
-                    <input type="number" step="0.01" x-bind:name="'items['+index+'][credit_amount]'" placeholder="Credit" value="0.00" required class="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 text-slate-800 focus:ring-2 focus:ring-indigo-100 transition-all">
-                </div>
-                <div>
-                    <button type="button" @click="items.splice(index, 1)" class="p-3 text-red-500 hover:bg-red-50 rounded-lg">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-xs font-bold text-[#172033] uppercase tracking-wider">Journal Lines</h3>
+            <button type="button" @click="items.push({id: Date.now()})" 
+                    class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white hover:bg-orange-50 text-xs font-semibold text-[#F5703E] flex items-center gap-1 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Add Line
+            </button>
+        </div>
+
+        {{-- Journal Items --}}
+        <div class="space-y-2 mb-5">
+            <template x-for="(item, index) in items" :key="item.id">
+                <div class="flex gap-2 items-center">
+                    <div class="flex-1">
+                        <select x-bind:name="'items['+index+'][account_id]'" required 
+                                class="w-full h-10 px-3 bg-white border border-[#E5E7EB] rounded-lg text-xs text-[#172033] focus:outline-none focus:border-[#F5703E]">
+                            <option value="">Select Account</option>
+                            @foreach($accounts as $acc)
+                                <option value="{{ $acc->id }}">{{ $acc->account_name }} ({{ $acc->account_type }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="w-32">
+                        <input type="number" step="0.01" x-bind:name="'items['+index+'][debit_amount]'" placeholder="Debit" value="0.00" required
+                               class="w-full h-10 px-3 bg-white border border-[#E5E7EB] rounded-lg text-xs font-mono text-blue-600 placeholder-[#94A3B8] focus:outline-none focus:border-[#F5703E]">
+                    </div>
+                    <div class="w-32">
+                        <input type="number" step="0.01" x-bind:name="'items['+index+'][credit_amount]'" placeholder="Credit" value="0.00" required
+                               class="w-full h-10 px-3 bg-white border border-[#E5E7EB] rounded-lg text-xs font-mono text-[#29AB6C] placeholder-[#94A3B8] focus:outline-none focus:border-[#F5703E]">
+                    </div>
+                    <button type="button" @click="items.splice(index, 1)"
+                            class="w-9 h-9 rounded-lg border border-[#E5E7EB] bg-white hover:bg-red-50 text-[#94A3B8] hover:text-[#FF4848] hover:border-red-200 flex items-center justify-center flex-shrink-0 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-            </div>
-        </template>
-        
-        <button type="button" @click="items.push({id: Date.now()})" class="text-indigo-600 text-sm font-medium hover:text-indigo-800">+ Add Line</button>
+            </template>
+        </div>
 
-        <div class="mt-8 flex justify-end gap-3 border-t pt-4">
-            <button type="button" x-on:click="$dispatch('close')" class="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm">Save Entry</button>
+        <div class="pt-4 border-t border-[#E5E7EB] flex justify-end gap-2.5">
+            <button type="button" x-on:click="$dispatch('close')" class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white hover:bg-slate-50 text-xs font-medium text-[#172033] transition-colors">Cancel</button>
+            <button type="submit" class="btn-brand h-10 px-5 rounded-lg text-white text-xs font-medium transition-colors shadow-sm">Save Entry</button>
         </div>
     </form>
 </x-modal>

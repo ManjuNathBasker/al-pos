@@ -1,110 +1,99 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="mb-8">
-    <div class="flex items-center gap-4">
-        <a href="{{ route('categories.index') }}" class="text-slate-400 hover:text-slate-600">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-        </a>
-        <div>
-            <h2 class="text-2xl font-bold text-slate-800">Edit Category</h2>
-            <p class="mt-1 text-sm text-slate-500">Update the details for {{ $category->name }}.</p>
-        </div>
-    </div>
-</div>
+<div class="space-y-6 max-w-4xl">
 
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden max-w-3xl">
-    <form action="{{ route('categories.update', $category) }}" method="POST" class="p-6 sm:p-8 space-y-8">
+    {{-- Back Link & Header --}}
+    <div>
+        <a href="{{ route('categories.index') }}" class="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#F5703E] transition-colors mb-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            <span>Back to Categories</span>
+        </a>
+        <h1 class="text-2xl font-semibold text-[#172033] tracking-tight">Edit Category</h1>
+        <p class="text-sm text-[#64748B] mt-0.5">Update category name, icon, or POS display order for {{ $category->name }}.</p>
+    </div>
+
+    <form action="{{ route('categories.update', $category) }}" method="POST" class="space-y-6">
         @csrf
         @method('PUT')
 
-        <div class="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-2">
-            
-            <div class="sm:col-span-2">
-                <label for="name" class="block text-sm font-medium text-slate-700">Category Name <span class="text-red-500">*</span></label>
-                <div class="mt-1">
-                    <input type="text" name="name" id="name" required value="{{ old('name', $category->name) }}" 
-                           class="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border">
-                </div>
-                @error('name')
-                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+        {{-- Section: Category Configuration --}}
+        <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-6 space-y-5">
+            <h3 class="text-sm font-semibold text-[#172033] border-b border-[#E5E7EB] pb-3">Category Details</h3>
 
-            <div class="sm:col-span-2">
-                <label for="description" class="block text-sm font-medium text-slate-700">Description</label>
-                <div class="mt-1">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {{-- Name --}}
+                <div class="md:col-span-2">
+                    <label for="name" class="block text-xs font-semibold text-[#172033]">Category Name <span class="text-[#FF4848]">*</span></label>
+                    <input type="text" name="name" id="name" value="{{ old('name', $category->name) }}" required 
+                           class="mt-1.5 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
+                    @error('name')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
+                </div>
+
+                {{-- Description --}}
+                <div class="md:col-span-2">
+                    <label for="description" class="block text-xs font-semibold text-[#172033]">Description</label>
                     <textarea id="description" name="description" rows="3" 
-                              class="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border">{{ old('description', $category->description) }}</textarea>
+                              class="mt-1.5 w-full p-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">{{ old('description', $category->description) }}</textarea>
+                    @error('description')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
                 </div>
-                @error('description')
-                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
 
-            <div>
-                <label for="icon" class="block text-sm font-medium text-slate-700">Icon (Text/Emoji)</label>
-                <div class="mt-1">
-                    <input type="text" name="icon" id="icon" value="{{ old('icon', $category->icon) }}" placeholder="e.g., ☕ or fa-coffee"
-                           class="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border">
+                {{-- Icon (Text / Emoji) --}}
+                <div>
+                    <label for="icon" class="block text-xs font-semibold text-[#172033]">Icon (Emoji / Text)</label>
+                    <input type="text" name="icon" id="icon" value="{{ old('icon', $category->icon) }}" placeholder="e.g. 🍕, ☕, 🍰"
+                           class="mt-1.5 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
+                    @error('icon')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
                 </div>
-                @error('icon')
-                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
 
-            <div>
-                <label for="color" class="block text-sm font-medium text-slate-700">Color (Hex Code)</label>
-                <div class="mt-1 flex gap-3 items-center">
-                    <input type="color" name="color_picker" id="color_picker" value="{{ old('color', $category->color ?? '#3b82f6') }}" 
-                           class="h-9 w-14 p-0 border-0 rounded cursor-pointer"
-                           onchange="document.getElementById('color').value = this.value">
-                    <input type="text" name="color" id="color" value="{{ old('color', $category->color ?? '#3b82f6') }}" placeholder="#ffffff"
-                           class="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border"
-                           onchange="document.getElementById('color_picker').value = this.value">
+                {{-- Color --}}
+                <div>
+                    <label for="color" class="block text-xs font-semibold text-[#172033]">Color Accent</label>
+                    <div class="mt-1.5 flex items-center gap-3">
+                        <input type="color" name="color_picker" id="color_picker" value="{{ old('color', $category->color ?? '#F5703E') }}" 
+                               class="h-11 w-14 p-1 border border-[#E5E7EB] rounded-lg cursor-pointer bg-white"
+                               onchange="document.getElementById('color').value = this.value">
+                        <input type="text" name="color" id="color" value="{{ old('color', $category->color ?? '#F5703E') }}" placeholder="#F5703E"
+                               class="w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]"
+                               onchange="document.getElementById('color_picker').value = this.value">
+                    </div>
+                    @error('color')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
                 </div>
-                @error('color')
-                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
 
-            <div>
-                <label for="sort_order" class="block text-sm font-medium text-slate-700">Sort Order</label>
-                <div class="mt-1">
+                {{-- Sort Order --}}
+                <div>
+                    <label for="sort_order" class="block text-xs font-semibold text-[#172033]">Sort Order</label>
                     <input type="number" name="sort_order" id="sort_order" value="{{ old('sort_order', $category->sort_order) }}" 
-                           class="block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border">
-                </div>
-                <p class="mt-1 text-xs text-slate-500">Lower numbers appear first.</p>
-                @error('sort_order')
-                    <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div class="sm:col-span-2 mt-4">
-                <div class="flex items-start">
-                    <div class="flex h-5 items-center">
-                        <input id="is_active" name="is_active" type="checkbox" value="1" {{ old('is_active', $category->is_active) ? 'checked' : '' }}
-                               class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                    </div>
-                    <div class="ml-3 text-sm">
-                        <label for="is_active" class="font-medium text-slate-700">Active Status</label>
-                        <p class="text-slate-500">Only active categories will be shown in the POS.</p>
-                    </div>
+                           class="mt-1.5 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
+                    <p class="mt-1 text-[11px] text-[#64748B]">Lower numbers appear first on POS buttons.</p>
+                    @error('sort_order')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
                 </div>
             </div>
 
+            <div class="pt-2">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', $category->is_active) ? 'checked' : '' }} 
+                           class="w-4 h-4 rounded border-[#E5E7EB] text-[#F5703E] focus:ring-[#F5703E]">
+                    <div>
+                        <span class="text-xs font-semibold text-[#172033] block">Active Status</span>
+                        <span class="text-[11px] text-[#64748B]">Show this category and its products in the POS catalog.</span>
+                    </div>
+                </label>
+            </div>
         </div>
 
-        <div class="pt-5 border-t border-slate-200 flex justify-end gap-3">
-            <a href="{{ route('categories.index') }}" class="rounded-md border border-slate-300 bg-white py-2 px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        {{-- Footer Actions --}}
+        <div class="flex items-center justify-end gap-3 pt-2">
+            <a href="{{ route('categories.index') }}" 
+               class="h-11 px-5 rounded-lg border border-[#E5E7EB] bg-white hover:bg-slate-50 text-sm font-medium text-[#172033] transition-colors flex items-center justify-center">
                 Cancel
             </a>
-            <button type="submit" class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                Update Category
+            <button type="submit" 
+                    class="h-11 px-6 rounded-lg bg-[#F5703E] hover:bg-[#E05826] text-white text-sm font-medium transition-colors shadow-sm flex items-center justify-center gap-2">
+                <span>Update Category</span>
             </button>
         </div>
     </form>
+
 </div>
 @endsection

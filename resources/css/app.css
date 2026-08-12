@@ -1,3 +1,59 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root {
+        --color-primary: #F5703E;
+        --color-primary-dark: #E05520;
+        --color-primary-light: #FFF3EE;
+        --color-success: #29AB6C;
+        --color-danger: #FF4848;
+        --color-warning: #FF9932;
+        --color-info: #8FAAEF;
+        --color-bg: #FBF9F7;
+        --color-border: #E7E5E4;
+    }
+
+    * {
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+}
+
+@layer components {
+    .nav-active {
+        background: linear-gradient(135deg, #FFF3EE 0%, #FFE4D6 100%);
+        color: #C04010;
+    }
+    .nav-active svg {
+        color: #F5703E;
+    }
+
+    .btn-primary {
+        background: #F5703E;
+        color: white;
+        font-weight: 600;
+        transition: background 0.2s ease;
+    }
+    .btn-primary:hover {
+        background: #E05520;
+    }
+
+    .badge-success {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+    .badge-danger {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+    .badge-warning {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+    .badge-info {
+        background: #EFF6FF;
+        color: #1E40AF;
+    }
+}

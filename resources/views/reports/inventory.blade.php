@@ -1,96 +1,89 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="mb-8 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-    <div>
-        <h2 class="text-2xl font-bold text-slate-800">Inventory Reports</h2>
-        <p class="mt-1 text-sm text-slate-500">Track current stock levels and valuations.</p>
-    </div>
-    
-    <form action="{{ route('reports.inventory') }}" method="GET" class="flex flex-wrap items-center gap-2">
-        <select name="status" class="rounded-lg border-slate-200 text-sm px-3 py-2">
-            <option value="all">All Items</option>
-            <option value="in_stock" {{ request('status') == 'in_stock' ? 'selected' : '' }}>In Stock</option>
-            <option value="low_stock" {{ request('status') == 'low_stock' ? 'selected' : '' }}>Low Stock</option>
-            <option value="out_of_stock" {{ request('status') == 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
-        </select>
-        
-        <button type="submit" class="p-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 ml-2" title="Filter">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-        </button>
-        
-        <div class="flex items-center gap-2 ml-auto">
-            <button type="submit" name="format" value="pdf" formaction="{{ route('reports.inventory.export') }}" class="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-bold text-sm transition-colors border border-red-100">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                PDF
-            </button>
-            <button type="submit" name="format" value="excel" formaction="{{ route('reports.inventory.export') }}" class="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 font-bold text-sm transition-colors border border-emerald-100">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                Excel
-            </button>
+<div class="space-y-6">
+
+    {{-- Page Header + Filter --}}
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-semibold text-[#172033] tracking-tight">Inventory Report</h1>
+            <p class="text-sm text-[#64748B] mt-0.5">Track current stock levels, valuations, and low-stock alerts.</p>
         </div>
-    </form>
-</div>
+        <form action="{{ route('reports.inventory') }}" method="GET" class="flex flex-wrap items-center gap-2">
+            <select name="status" class="h-10 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] focus:outline-none focus:border-[#F5703E]">
+                <option value="all">All Items</option>
+                <option value="in_stock" {{ request('status') == 'in_stock' ? 'selected' : '' }}>In Stock</option>
+                <option value="low_stock" {{ request('status') == 'low_stock' ? 'selected' : '' }}>Low Stock</option>
+                <option value="out_of_stock" {{ request('status') == 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
+            </select>
+            <button type="submit" class="h-10 px-4 rounded-lg btn-brand text-white text-sm font-medium transition-colors shadow-sm">Filter</button>
+            <button type="submit" name="format" value="pdf" formaction="{{ route('reports.inventory.export') }}" 
+                    class="h-10 px-3.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold border border-red-200 flex items-center gap-1.5 transition-colors">PDF</button>
+            <button type="submit" name="format" value="excel" formaction="{{ route('reports.inventory.export') }}" 
+                    class="h-10 px-3.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-bold border border-emerald-200 flex items-center gap-1.5 transition-colors">Excel</button>
+        </form>
+    </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total Items</div>
-        <div class="text-3xl font-black text-slate-900">{{ $stats['total_items'] }}</div>
+    {{-- KPI Stats --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
+            <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Items</p>
+            <p class="text-2xl font-bold text-[#172033] mt-1.5">{{ $stats['total_items'] }}</p>
+        </div>
+        <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
+            <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Inventory Value</p>
+            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">₹{{ number_format($stats['total_value'], 2) }}</p>
+        </div>
+        <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
+            <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Low Stock</p>
+            <p class="text-2xl font-bold text-[#FF9932] mt-1.5">{{ $stats['low_stock'] }}</p>
+        </div>
+        <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
+            <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Out of Stock</p>
+            <p class="text-2xl font-bold text-[#FF4848] mt-1.5">{{ $stats['out_of_stock'] }}</p>
+        </div>
     </div>
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total Inventory Value</div>
-        <div class="text-3xl font-black text-indigo-600">${{ number_format($stats['total_value'], 2) }}</div>
-    </div>
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Low Stock Items</div>
-        <div class="text-3xl font-black text-amber-600">{{ $stats['low_stock'] }}</div>
-    </div>
-    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Out of Stock Items</div>
-        <div class="text-3xl font-black text-red-600">{{ $stats['out_of_stock'] }}</div>
-    </div>
-</div>
 
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    <th class="px-6 py-4">Item Name</th>
-                    <th class="px-6 py-4">Item Code</th>
-                    <th class="px-6 py-4 text-center">Status</th>
-                    <th class="px-6 py-4 text-right">Quantity</th>
-                    <th class="px-6 py-4 text-right">Unit Cost</th>
-                    <th class="px-6 py-4 text-right">Total Value</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                @forelse($inventory as $item)
-                <tr class="hover:bg-slate-50/50">
-                    <td class="px-6 py-4 text-sm font-bold text-slate-800">{{ $item->name }}</td>
-                    <td class="px-6 py-4 text-sm text-slate-600">{{ $item->code }}</td>
-                    <td class="px-6 py-4 text-center text-sm">
-                        @if($item->current_stock <= 0)
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Out of Stock</span>
-                        @elseif($item->current_stock <= $item->minimum_stock)
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Low Stock</span>
-                        @else
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">In Stock</span>
-                        @endif
-                    </td>
-                    <td class="px-6 py-4 text-right text-sm text-slate-600">{{ $item->current_stock }} {{ $item->unit_type }}</td>
-                    <td class="px-6 py-4 text-right text-sm text-slate-600">${{ number_format($item->cost_price, 2) }}</td>
-                    <td class="px-6 py-4 text-right text-sm font-bold text-slate-800">${{ number_format($item->current_stock * $item->cost_price, 2) }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-slate-500">No inventory data found.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+    {{-- Inventory Table --}}
+    <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50/75 border-b border-[#E5E7EB]">
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Item Name</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Code</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Stock Status</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider text-right">Quantity</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider text-right">Unit Cost</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider text-right">Total Value</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB]">
+                    @forelse($inventory as $item)
+                    <tr class="hover:bg-[#FFF8F5] transition-colors">
+                        <td class="py-4 px-4 text-sm font-semibold text-[#172033]">{{ $item->name }}</td>
+                        <td class="py-4 px-4 text-xs font-mono text-[#64748B]">{{ $item->code }}</td>
+                        <td class="py-4 px-4">
+                            @if($item->current_stock <= 0)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-[#FF4848] border border-red-200">Out of Stock</span>
+                            @elseif($item->current_stock <= $item->minimum_stock)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-[#FF9932] border border-amber-200">Low Stock</span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-[#29AB6C] border border-emerald-200">In Stock</span>
+                            @endif
+                        </td>
+                        <td class="py-4 px-4 text-right text-xs font-mono font-medium text-[#172033]">{{ $item->current_stock }} {{ $item->unit_type }}</td>
+                        <td class="py-4 px-4 text-right text-xs font-mono text-[#64748B]">₹{{ number_format($item->cost_price, 2) }}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono font-bold text-[#172033]">₹{{ number_format($item->current_stock * $item->cost_price, 2) }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-xs text-[#94A3B8]">No inventory data found.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 @endsection

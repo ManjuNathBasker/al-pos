@@ -1,99 +1,95 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-    <div>
-        <h2 class="text-2xl font-bold text-slate-800">Delivery Partners</h2>
-        <p class="mt-1 text-sm text-slate-500">Manage delivery partners and their commission percentages.</p>
-    </div>
-    <a href="{{ route('delivery-partners.create') }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-sm">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        Add Delivery Partner
-    </a>
-</div>
+<div class="space-y-6">
 
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
-                <tr>
-                    <th class="px-6 py-4">Name</th>
-                    <th class="px-6 py-4">Commission</th>
-                    <th class="px-6 py-4">Receivables Account</th>
-                    <th class="px-6 py-4">Status</th>
-                    <th class="px-6 py-4 text-right">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                @forelse($partners as $partner)
-                    <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4 font-medium text-slate-900">{{ $partner->name }}</td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/50">
+    {{-- Page Header --}}
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-semibold text-[#172033] tracking-tight">Delivery Partners</h1>
+            <p class="text-sm text-[#64748B] mt-0.5">Manage delivery partners, commission rates, and settlement accounts.</p>
+        </div>
+        <a href="{{ route('delivery-partners.create') }}" 
+           class="btn-brand h-11 px-4 rounded-lg text-white text-sm font-medium transition-colors shadow-sm inline-flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <span>Add Partner</span>
+        </a>
+    </div>
+
+    {{-- Partners Table --}}
+    <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50/75 border-b border-[#E5E7EB]">
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Name</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Commission</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Receivables Account</th>
+                        <th class="py-3.5 px-4 text-xs font-semibold text-[#64748B] uppercase tracking-wider">Status</th>
+                        <th class="py-3.5 px-4 text-right text-xs font-semibold text-[#64748B] uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB]">
+                    @forelse($partners as $partner)
+                    <tr class="hover:bg-[#FFF8F5] transition-colors">
+                        <td class="py-4 px-4 text-sm font-semibold text-[#172033]">{{ $partner->name }}</td>
+                        <td class="py-4 px-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                                 {{ number_format($partner->commission_percentage, 2) }}%
                             </span>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="py-4 px-4 text-xs text-[#64748B]">
                             @if($partner->receivableAccount)
-                                <span class="text-xs text-slate-500">{{ $partner->receivableAccount->account_name }}</span>
+                                {{ $partner->receivableAccount->account_name }}
                             @else
-                                <span class="text-xs text-slate-400 italic">None</span>
+                                <span class="italic text-[#94A3B8]">None</span>
                             @endif
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="py-4 px-4">
                             @if($partner->status)
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/50">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    Active
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-[#29AB6C] border border-emerald-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#29AB6C]"></span>Active
                                 </span>
                             @else
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                                    Inactive
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-[#64748B] border border-slate-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#94A3B8]"></span>Inactive
                                 </span>
                             @endif
                         </td>
-                        <td class="px-6 py-4 text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('delivery-partners.settlements', $partner) }}" class="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Settlements">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                                    </svg>
+                        <td class="py-4 px-4 text-right">
+                            <div class="inline-flex items-center justify-end gap-1.5">
+                                <a href="{{ route('delivery-partners.settlements', $partner) }}" title="Settlements"
+                                   class="w-[34px] h-[34px] rounded-lg border border-[#E5E7EB] bg-white hover:bg-emerald-50 text-[#64748B] hover:text-[#29AB6C] hover:border-emerald-200 flex items-center justify-center transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                                 </a>
-                                <a href="{{ route('delivery-partners.edit', $partner) }}" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                    </svg>
+                                <a href="{{ route('delivery-partners.edit', $partner) }}" title="Edit Partner"
+                                   class="w-[34px] h-[34px] rounded-lg border border-[#E5E7EB] bg-white hover:bg-orange-50 text-[#64748B] hover:text-[#F5703E] hover:border-orange-200 flex items-center justify-center transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                 </a>
-                                <form action="{{ route('delivery-partners.destroy', $partner) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this delivery partner?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
+                                <form action="{{ route('delivery-partners.destroy', $partner) }}" method="POST" onsubmit="return confirm('Delete this partner?');">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" title="Delete Partner"
+                                            class="w-[34px] h-[34px] rounded-lg border border-[#E5E7EB] bg-white hover:bg-red-50 text-[#64748B] hover:text-[#FF4848] hover:border-red-200 flex items-center justify-center transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>
                                 </form>
                             </div>
                         </td>
                     </tr>
-                @empty
+                    @empty
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center">
-                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-50 mb-3">
-                                <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                                </svg>
-                            </div>
-                            <h3 class="text-sm font-semibold text-slate-900">No Delivery Partners</h3>
-                            <p class="mt-1 text-sm text-slate-500">Get started by creating a new delivery partner.</p>
+                        <td colspan="5" class="py-16 text-center">
+                            <div class="w-12 h-12 rounded-xl bg-orange-50 text-[#F5703E] flex items-center justify-center text-xl mx-auto mb-3 border border-orange-100">🚚</div>
+                            <h3 class="text-sm font-bold text-[#172033]">No delivery partners yet</h3>
+                            <p class="text-xs text-[#64748B] mt-1">
+                                <a href="{{ route('delivery-partners.create') }}" class="text-[#F5703E] hover:underline font-semibold">Add a partner</a> to manage delivery commissions.
+                            </p>
                         </td>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 @endsection
