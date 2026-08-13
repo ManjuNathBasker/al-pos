@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ManualController;
 use App\Http\Controllers\POSController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
@@ -171,5 +172,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/delivery-partners/orders/{order}/settle', [App\Http\Controllers\DeliveryPartnerController::class, 'markSettled'])->name('delivery-partners.mark-settled');
     Route::get('/reports/card-commission', [App\Http\Controllers\CardCommissionReportController::class, 'index'])->name('reports.card-commission');
 });
+
+// User Manual (accessible to all authenticated users)
+Route::get('/user-manual', [ManualController::class, 'index'])
+    ->middleware(['auth', 'tenant'])
+    ->name('manual.index');
 
 require __DIR__.'/auth.php';
