@@ -211,17 +211,17 @@ class WaiterController extends Controller
             ->where('status', '!=', 'served')
             ->count();
             
-        if ($unservedTickets > 0 || $order->kitchen_status !== 'served') {
-            // But wait, what if kitchen_status on order isn't updated?
-            // Actually, we need to make sure all items are served.
-            $unservedItems = \App\Models\OrderItem::where('order_id', $order->id)
-                ->where('kitchen_status', '!=', 'served')
-                ->where('kitchen_status', '!=', 'none')
-                ->count();
-                
-            if ($unservedTickets > 0 || $unservedItems > 0) {
-                return response()->json(['success' => false, 'message' => 'All Kitchen Tickets must be served before closing.'], 422);
-            }
+        $unservedItems = \App\Models\OrderItem::where('order_id', $order->id)
+            ->where('kitchen_status', '!=', 'served')
+            ->where('kitchen_status', '!=', 'none')
+            ->count();
+            
+        if ($unservedTickets > 0 || $unservedItems > 0) {
+            return response()->json(['success' => false, 'message' => 'All Kitchen Tickets must be served before closing.'], 422);
+        }
+
+        if ($order->kitchen_status !== 'served') {
+            $order->update(['kitchen_status' => 'served']);
         }
 
         \Illuminate\Support\Facades\DB::beginTransaction();

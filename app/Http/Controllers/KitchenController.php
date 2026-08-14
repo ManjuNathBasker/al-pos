@@ -42,12 +42,14 @@ class KitchenController extends Controller
         // Sync with parent order aggregate status
         $order = $ticket->order;
         if ($order) {
-            // Only update order status to preparing if it's the first ticket started
-            // Or to ready if ALL tickets are ready
-            $activeTickets = $order->kitchenTickets()->whereIn('status', ['pending', 'preparing'])->count();
-            if ($request->status === 'preparing' || $activeTickets > 0) {
+            $pendingOrPreparing = $order->kitchenTickets()->whereIn('status', ['pending', 'preparing'])->count();
+            $unservedTickets = $order->kitchenTickets()->where('status', '!=', 'served')->count();
+
+            if ($request->status === 'preparing' || $pendingOrPreparing > 0) {
                 $order->update(['kitchen_status' => 'preparing']);
-            } elseif ($activeTickets === 0) {
+            } elseif ($unservedTickets === 0) {
+                $order->update(['kitchen_status' => 'served']);
+            } else {
                 $order->update(['kitchen_status' => 'ready']);
             }
         }

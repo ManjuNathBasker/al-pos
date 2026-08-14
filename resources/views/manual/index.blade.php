@@ -433,7 +433,7 @@ function manualApp() {
                 breadcrumb: ['User Manual', 'POS Terminal', 'Overview'],
                 prev: 'getting-started-roles',
                 next: 'pos-shift',
-                searchText: 'pos terminal layout panels grid list density',
+                searchText: 'pos terminal layout panels grid list density order billing video tutorial walkthrough guide',
                 content: `
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">POS Overview & Layout</h1>
                     <p class="text-slate-500 mb-8">The main interface for processing sales.</p>
@@ -453,6 +453,30 @@ function manualApp() {
                     
                     <div class="bg-slate-50 border border-slate-200 p-4 mb-6 rounded-lg">
                         <p class="text-sm text-slate-600">You can toggle between a Grid view and List view for products. In grid view, you can adjust the column density (3, 4, or 5 columns) to fit your screen size.</p>
+                    </div>
+
+                    <div class="mt-8 mb-6 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5703E]/10 text-[#F5703E]">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Video Tutorial: Order & Billing</h3>
+                                    <p class="text-xs text-slate-500">Watch the step-by-step video demonstration below.</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-[#F5703E]">Video Guide</span>
+                        </div>
+                        <div class="p-4 bg-slate-950 flex justify-center">
+                            <video class="w-full max-h-[480px] rounded-lg shadow-md" controls preload="metadata">
+                                <source src="{{ asset('assets/usermanual/order & Billing.webm') }}" type="video/webm">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
                     </div>
                 `
             },
@@ -730,7 +754,7 @@ function manualApp() {
                 breadcrumb: ['User Manual', 'Products', 'Product List'],
                 prev: 'pos-receipt',
                 next: 'products-add',
-                searchText: 'products list table category price stock status active edit delete add new search',
+                searchText: 'products list table category price stock status active edit delete add new search video tutorial walkthrough guide',
                 content: `
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Product List</h1>
                     <p class="text-slate-500 mb-8">Managing your sales catalog.</p>
@@ -749,6 +773,30 @@ function manualApp() {
                         <li>Click <strong>Add Product</strong> at the top right to create a new item.</li>
                         <li>Use the Edit and Delete action buttons on each row to modify products.</li>
                     </ul>
+
+                    <div class="mt-8 mb-6 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5703E]/10 text-[#F5703E]">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Video Tutorial: Product Management</h3>
+                                    <p class="text-xs text-slate-500">Watch the step-by-step video demonstration below.</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-[#F5703E]">Video Guide</span>
+                        </div>
+                        <div class="p-4 bg-slate-950 flex justify-center">
+                            <video class="w-full max-h-[480px] rounded-lg shadow-md" controls preload="metadata">
+                                <source src="{{ asset('assets/usermanual/Products.webm') }}" type="video/webm">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
                 `
             },
             'products-add': {
@@ -1066,7 +1114,7 @@ function manualApp() {
                 breadcrumb: ['User Manual', 'Inventory', 'Items'],
                 prev: 'coupons-list',
                 next: 'inventory-recipes',
-                searchText: 'inventory raw materials ingredients stock unit kg pcs dozen minimum stock cost price warning badge',
+                searchText: 'inventory raw materials ingredients stock unit kg pcs dozen minimum stock cost price warning badge video tutorial walkthrough guide',
                 content: `
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Inventory Items</h1>
                     <p class="text-slate-500 mb-8">Managing raw materials and ingredients.</p>
@@ -1089,6 +1137,30 @@ function manualApp() {
 
                     <div class="bg-slate-50 border border-slate-200 p-4 mb-6 rounded-lg">
                         <p class="text-sm text-slate-600">Items falling below their minimum stock level are visually highlighted with a yellow/red warning badge on the list view.</p>
+                    </div>
+
+                    <div class="mt-8 mb-6 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5703E]/10 text-[#F5703E]">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Video Tutorial: Inventory Management</h3>
+                                    <p class="text-xs text-slate-500">Watch the step-by-step video demonstration below.</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-[#F5703E]">Video Guide</span>
+                        </div>
+                        <div class="p-4 bg-slate-950 flex justify-center">
+                            <video class="w-full max-h-[480px] rounded-lg shadow-md" controls preload="metadata">
+                                <source src="{{ asset('assets/usermanual/Inventory.webm') }}" type="video/webm">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
                     </div>
                 `
             },
@@ -1135,7 +1207,7 @@ function manualApp() {
                 breadcrumb: ['User Manual', 'Restaurant', 'Table Map'],
                 prev: 'inventory-recipes',
                 next: 'restaurant-table-settings',
-                searchText: 'table map floor layout sections color-coded status available occupied reserved cleaning ajax real-time read-only',
+                searchText: 'table map floor layout sections color-coded status available occupied reserved cleaning ajax real-time read-only video tutorial walkthrough guide',
                 content: `
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Table Map</h1>
                     <p class="text-slate-500 mb-8">Visual overview of your dining floor.</p>
@@ -1156,6 +1228,30 @@ function manualApp() {
                     </ul>
                     
                     <p class="text-slate-600 leading-relaxed mb-4">The table map updates in real-time via AJAX. <strong>Note:</strong> This view is read-only. To add, edit, or delete tables, use Table Settings.</p>
+
+                    <div class="mt-8 mb-6 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5703E]/10 text-[#F5703E]">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Video Tutorial: Table Setup & Map</h3>
+                                    <p class="text-xs text-slate-500">Watch the step-by-step video demonstration below.</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-[#F5703E]">Video Guide</span>
+                        </div>
+                        <div class="p-4 bg-slate-950 flex justify-center">
+                            <video class="w-full max-h-[480px] rounded-lg shadow-md" controls preload="metadata">
+                                <source src="{{ asset('assets/usermanual/Table Setup and Map.webm') }}" type="video/webm">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
                 `
             },
             'restaurant-table-settings': {
@@ -1449,7 +1545,7 @@ function manualApp() {
                 breadcrumb: ['User Manual', 'Accounting', 'Expenses'],
                 prev: 'accounting-journals',
                 next: 'reports-sales',
-                searchText: 'expenses record paid from category accounting entry',
+                searchText: 'expenses record paid from category accounting entry video tutorial walkthrough guide',
                 content: `
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Expenses</h1>
                     <p class="text-slate-500 mb-8">Tracking money going out.</p>
@@ -1469,6 +1565,30 @@ function manualApp() {
                     </ul>
 
                     <p class="text-slate-600 leading-relaxed mb-4">Behind the scenes, saving an expense automatically creates the proper accounting journal entry (debiting the expense account and crediting the payment account).</p>
+
+                    <div class="mt-8 mb-6 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5703E]/10 text-[#F5703E]">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Video Tutorial: Expense Management</h3>
+                                    <p class="text-xs text-slate-500">Watch the step-by-step video demonstration below.</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-[#F5703E]">Video Guide</span>
+                        </div>
+                        <div class="p-4 bg-slate-950 flex justify-center">
+                            <video class="w-full max-h-[480px] rounded-lg shadow-md" controls preload="metadata">
+                                <source src="{{ asset('assets/usermanual/Expense.webm') }}" type="video/webm">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
                 `
             },
 
@@ -1711,7 +1831,7 @@ function manualApp() {
                 breadcrumb: ['User Manual', 'Settings', 'Companies'],
                 prev: 'reports-export',
                 next: 'settings-modules',
-                searchText: 'companies stores multi-tenant switch modules business type add create edit delete',
+                searchText: 'companies stores multi-tenant switch modules business type add create edit delete video tutorial walkthrough guide',
                 content: `
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Companies</h1>
                     <p class="text-slate-500 mb-8">Managing business locations.</p>
@@ -1730,6 +1850,30 @@ function manualApp() {
                     </ul>
 
                     <p class="text-slate-600 leading-relaxed mb-4">To add a new location, click "Add Company" and provide the Name and Business Type (retail, restaurant, cafe, etc.).</p>
+
+                    <div class="mt-8 mb-6 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5703E]/10 text-[#F5703E]">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Video Tutorial: Company Management</h3>
+                                    <p class="text-xs text-slate-500">Watch the step-by-step video demonstration below.</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-[#F5703E]">Video Guide</span>
+                        </div>
+                        <div class="p-4 bg-slate-950 flex justify-center">
+                            <video class="w-full max-h-[480px] rounded-lg shadow-md" controls preload="metadata">
+                                <source src="{{ asset('assets/usermanual/Companies.webm') }}" type="video/webm">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
                 `
             },
             'settings-modules': {
@@ -1764,7 +1908,7 @@ function manualApp() {
                 breadcrumb: ['User Manual', 'Settings', 'Card Types'],
                 prev: 'settings-modules',
                 next: 'settings-delivery-partners',
-                searchText: 'card types commission network visa mastercard handling write-off settlement expense',
+                searchText: 'card types commission network visa mastercard handling write-off settlement expense video tutorial walkthrough guide',
                 content: `
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Card Types & Commissions</h1>
                     <p class="text-slate-500 mb-8">Configuring payment processing rules.</p>
@@ -1781,6 +1925,30 @@ function manualApp() {
                         <li><strong>Handling Method:</strong> Choose how to track the fee (Ignore, Auto Write-Off, or Settlement Tracking).</li>
                         <li><strong>Expense Account:</strong> If writing off, select which accounting ledger takes the hit for the commission cost.</li>
                     </ul>
+
+                    <div class="mt-8 mb-6 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5703E]/10 text-[#F5703E]">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Video Tutorial: Card Types & POS Terminals</h3>
+                                    <p class="text-xs text-slate-500">Watch the step-by-step video demonstration below.</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-[#F5703E]">Video Guide</span>
+                        </div>
+                        <div class="p-4 bg-slate-950 flex justify-center">
+                            <video class="w-full max-h-[480px] rounded-lg shadow-md" controls preload="metadata">
+                                <source src="{{ asset('assets/usermanual/CardType.webm') }}" type="video/webm">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
                 `
             },
             'settings-delivery-partners': {
@@ -1790,7 +1958,7 @@ function manualApp() {
                 breadcrumb: ['User Manual', 'Settings', 'Delivery Partners'],
                 prev: 'settings-card-types',
                 next: 'settings-users',
-                searchText: 'delivery partners aggregator swiggy zomato ubereats commission settlement receivables',
+                searchText: 'delivery partners aggregator swiggy zomato ubereats commission settlement receivables video tutorial walkthrough guide',
                 content: `
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Delivery Partners</h1>
                     <p class="text-slate-500 mb-8">Managing third-party delivery apps.</p>
@@ -1803,6 +1971,30 @@ function manualApp() {
                     
                     <h2 class="text-lg font-semibold text-slate-800 mt-8 mb-3">Settlement Tracking</h2>
                     <p class="text-slate-600 leading-relaxed mb-4">Click on a partner to view their dedicated settlements page. This shows all delivery orders processed through them, calculates the expected commission, and allows you to mark individual orders as Settled once you receive the payout from the partner.</p>
+
+                    <div class="mt-8 mb-6 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="px-5 py-3.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F5703E]/10 text-[#F5703E]">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Video Tutorial: Delivery Partners</h3>
+                                    <p class="text-xs text-slate-500">Watch the step-by-step video demonstration below.</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-[#F5703E]">Video Guide</span>
+                        </div>
+                        <div class="p-4 bg-slate-950 flex justify-center">
+                            <video class="w-full max-h-[480px] rounded-lg shadow-md" controls preload="metadata">
+                                <source src="{{ asset('assets/usermanual/Delivery.webm') }}" type="video/webm">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
                 `
             },
             'settings-users': {
