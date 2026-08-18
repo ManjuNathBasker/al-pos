@@ -38,17 +38,17 @@
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Amount</p>
-            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">₹{{ number_format($stats['total_amount'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">@currency($stats['total_amount'])</p>
             <p class="text-xs text-[#64748B] mt-1">Inventory cost</p>
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Paid</p>
-            <p class="text-2xl font-bold font-mono text-[#29AB6C] mt-1.5">₹{{ number_format($stats['total_paid'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#29AB6C] mt-1.5">@currency($stats['total_paid'])</p>
             <p class="text-xs text-[#64748B] mt-1">Cash outflow</p>
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Due</p>
-            <p class="text-2xl font-bold font-mono text-[#FF4848] mt-1.5">₹{{ number_format($stats['total_due'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#FF4848] mt-1.5">@currency($stats['total_due'])</p>
             <p class="text-xs text-[#64748B] mt-1">Outstanding liabilities</p>
         </div>
     </div>
@@ -75,7 +75,7 @@
                         <tr class="hover:bg-[#FFF8F5] transition-colors">
                             <td class="py-3.5 px-4 text-sm font-semibold text-[#172033]">{{ $supplier->name }}</td>
                             <td class="py-3.5 px-4 text-center text-xs font-medium text-[#64748B]">{{ $supplier->purchases_count }}</td>
-                            <td class="py-3.5 px-4 text-right text-sm font-bold font-mono text-[#F5703E]">₹{{ number_format($supplier->purchases_sum_total_amount, 2) }}</td>
+                            <td class="py-3.5 px-4 text-right text-sm font-bold font-mono text-[#F5703E]">@currency($supplier->purchases_sum_total_amount)</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -91,7 +91,7 @@
                 <div>
                     <div class="flex justify-between text-xs font-semibold text-[#64748B] mb-1.5">
                         <span>{{ date('F Y', strtotime($data->month . '-01')) }}</span>
-                        <span class="font-mono text-[#172033]">₹{{ number_format($data->total, 2) }}</span>
+                        <span class="font-mono text-[#172033]">@currency($data->total)</span>
                     </div>
                     <div class="w-full bg-slate-100 rounded-full h-2">
                         @php 

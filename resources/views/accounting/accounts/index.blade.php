@@ -41,7 +41,7 @@
                             @endif
                         </td>
                         <td class="py-4 px-4 text-xs font-medium text-[#64748B]">{{ $account->account_type }}</td>
-                        <td class="py-4 px-4 text-sm font-mono font-bold text-[#172033] text-right">₹{{ number_format($account->current_balance, 2) }}</td>
+                        <td class="py-4 px-4 text-sm font-mono font-bold text-[#172033] text-right">@currency($account->current_balance)</td>
                         <td class="py-4 px-4">
                             <div class="flex flex-wrap gap-1">
                                 @if($account->status)
@@ -193,7 +193,7 @@
                 </select>
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold text-[#172033]">Opening Balance (₹)</label>
+                <label class="block text-xs font-semibold text-[#172033]">Opening Balance (@currencySymbol)</label>
                 <input type="number" step="0.01" name="opening_balance" value="0.00"
                        class="mt-1 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
             </div>

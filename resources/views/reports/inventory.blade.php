@@ -32,7 +32,7 @@
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Inventory Value</p>
-            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">₹{{ number_format($stats['total_value'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">@currency($stats['total_value'])</p>
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Low Stock</p>
@@ -73,8 +73,8 @@
                             @endif
                         </td>
                         <td class="py-4 px-4 text-right text-xs font-mono font-medium text-[#172033]">{{ $item->current_stock }} {{ $item->unit_type }}</td>
-                        <td class="py-4 px-4 text-right text-xs font-mono text-[#64748B]">₹{{ number_format($item->cost_price, 2) }}</td>
-                        <td class="py-4 px-4 text-right text-sm font-mono font-bold text-[#172033]">₹{{ number_format($item->current_stock * $item->cost_price, 2) }}</td>
+                        <td class="py-4 px-4 text-right text-xs font-mono text-[#64748B]">@currency($item->cost_price)</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono font-bold text-[#172033]">@currency($item->current_stock * $item->cost_price)</td>
                     </tr>
                     @empty
                     <tr>

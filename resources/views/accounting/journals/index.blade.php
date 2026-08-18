@@ -42,16 +42,16 @@
                                 <div class="flex gap-2">
                                     <span class="font-medium">{{ $item->account->account_name }}:</span>
                                     @if($item->debit_amount > 0)
-                                        <span class="text-blue-600 font-mono">DR ₹{{ number_format($item->debit_amount, 2) }}</span>
+                                        <span class="text-blue-600 font-mono">DR @currency($item->debit_amount)</span>
                                     @endif
                                     @if($item->credit_amount > 0)
-                                        <span class="text-[#29AB6C] font-mono">CR ₹{{ number_format($item->credit_amount, 2) }}</span>
+                                        <span class="text-[#29AB6C] font-mono">CR @currency($item->credit_amount)</span>
                                     @endif
                                 </div>
                                 @endforeach
                             </div>
                         </td>
-                        <td class="py-4 px-4 text-sm font-mono font-bold text-[#172033] text-right">₹{{ number_format($entry->items->sum('debit_amount'), 2) }}</td>
+                        <td class="py-4 px-4 text-sm font-mono font-bold text-[#172033] text-right">@currency($entry->items->sum('debit_amount'))</td>
                     </tr>
                     @empty
                     <tr>

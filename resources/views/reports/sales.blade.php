@@ -52,15 +52,15 @@
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Sales</p>
-            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">₹{{ number_format($stats['total_sales'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">@currency($stats['total_sales'])</p>
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Paid</p>
-            <p class="text-2xl font-bold font-mono text-[#29AB6C] mt-1.5">₹{{ number_format($stats['total_paid'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#29AB6C] mt-1.5">@currency($stats['total_paid'])</p>
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Tax Collected</p>
-            <p class="text-2xl font-bold font-mono text-[#172033] mt-1.5">₹{{ number_format($stats['total_tax'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#172033] mt-1.5">@currency($stats['total_tax'])</p>
         </div>
     </div>
 
@@ -93,7 +93,7 @@
                                 {{ ucfirst($order->status) }}
                             </span>
                         </td>
-                        <td class="py-4 px-4 text-right text-sm font-mono font-bold text-[#172033]">₹{{ number_format($order->total_amount, 2) }}</td>
+                        <td class="py-4 px-4 text-right text-sm font-mono font-bold text-[#172033]">@currency($order->total_amount, $order)</td>
                     </tr>
                     @empty
                     <tr>

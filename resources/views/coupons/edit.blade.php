@@ -40,7 +40,7 @@
                 <label class="block text-xs font-semibold text-[#172033] mb-1.5">Discount Type <span class="text-[#FF4848]">*</span></label>
                 <select name="type" required class="w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] focus:outline-none focus:border-[#F5703E]">
                     <option value="percent" {{ $coupon->type === 'percent' ? 'selected' : '' }}>Percentage (%)</option>
-                    <option value="fixed" {{ $coupon->type === 'fixed' ? 'selected' : '' }}>Fixed Amount (₹)</option>
+                    <option value="fixed" {{ $coupon->type === 'fixed' ? 'selected' : '' }}>Fixed Amount (@currencySymbol)</option>
                 </select>
             </div>
 

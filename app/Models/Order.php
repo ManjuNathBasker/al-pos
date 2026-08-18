@@ -52,6 +52,11 @@ class Order extends Model
         'delivery_partner_id',
         'delivery_commission_amount',
         'settlement_status',
+        // Currency snapshot fields
+        'currency_code',
+        'currency_symbol',
+        'currency_symbol_position',
+        'currency_decimal_places',
     ];
 
     protected $casts = [
@@ -73,9 +78,10 @@ class Order extends Model
         'card_commission_tax_amount'       => 'float',
         'card_commission_total_deduction'  => 'float',
         'card_net_received'                => 'float',
+        'currency_decimal_places'          => 'integer',
     ];
 
-    // ── Boot: auto-generate order number ───────────────────────────
+    // ── Boot: auto-generate order number & currency snapshot ───────
     protected static function boot(): void
     {
         parent::boot();
@@ -87,10 +93,26 @@ class Order extends Model
                     5, '0', STR_PAD_LEFT
                 );
             }
+
+            if (empty($order->currency_code) && empty($order->currency_symbol)) {
+                $currencyConfig = $order->company_id 
+                    ? currency_config(Company::find($order->company_id))
+                    : current_currency_config();
+
+                $order->currency_code = $currencyConfig['code'];
+                $order->currency_symbol = $currencyConfig['symbol'];
+                $order->currency_symbol_position = $currencyConfig['symbol_position'];
+                $order->currency_decimal_places = $currencyConfig['decimal_places'];
+            }
         });
     }
 
     // ── Relationships ────────────────────────────────────────────────
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -144,6 +166,22 @@ class Order extends Model
     public function walletTransactions()
     {
         return $this->hasMany(WalletTransaction::class);
+    }
+
+    // ── Currency Helpers ──────────────────────────────────────────────
+    public function getCurrencyConfig(): array
+    {
+        return currency_config($this);
+    }
+
+    public function getCurrencySymbol(): string
+    {
+        return currency_symbol($this);
+    }
+
+    public function formatCurrency(mixed $amount, ?int $decimals = null): string
+    {
+        return format_currency($amount, $this, $decimals);
     }
 
     // ── Scopes ───────────────────────────────────────────────────────

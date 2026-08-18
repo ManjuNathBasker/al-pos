@@ -1,33 +1,41 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="purchaseForm()" class="space-y-6 max-w-5xl">
+<div class="space-y-6" x-data="purchaseForm()">
 
-    {{-- Back Link & Header --}}
-    <div>
-        <a href="{{ route('purchases.index') }}" class="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#F5703E] transition-colors mb-2">
+    {{-- ════════════════════════════════════════════════════════════
+         1. PAGE HEADER
+    ════════════════════════════════════════════════════════════ --}}
+    <div class="flex items-center gap-3">
+        <a href="{{ route('purchases.index') }}" title="Back to Purchase Orders"
+           class="w-9 h-9 rounded-lg border border-[#E5E7EB] bg-white hover:bg-slate-50 text-[#64748B] flex items-center justify-center transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            <span>Back to Purchase Orders</span>
         </a>
-        <h1 class="text-2xl font-semibold text-[#172033] tracking-tight">Create Purchase Order</h1>
-        <p class="text-sm text-[#64748B] mt-0.5">Procure raw ingredients, supplies, or retail stock from vendors.</p>
+        <div>
+            <h1 class="text-2xl font-semibold text-[#172033] tracking-tight">New Purchase Order</h1>
+            <p class="text-sm text-[#64748B] mt-0.5">Create a new raw material or ingredient restock order.</p>
+        </div>
     </div>
 
-    <form action="{{ route('purchases.store') }}" method="POST" class="space-y-6">
+    {{-- ════════════════════════════════════════════════════════════
+         2. FORM CONTAINER
+    ════════════════════════════════════════════════════════════ --}}
+    <form action="{{ route('purchases.store') }}" method="POST">
         @csrf
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {{-- Left 2 Columns: Supplier, Items, Notes --}}
+            {{-- Left 2 Columns: Supplier, Date & Item List --}}
             <div class="lg:col-span-2 space-y-6">
 
-                {{-- Supplier & Date Details --}}
-                <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-6 space-y-5">
-                    <h3 class="text-sm font-semibold text-[#172033] border-b border-[#E5E7EB] pb-3">Supplier & Order Date</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {{-- Supplier & Date Selection --}}
+                <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-6">
+                    <h3 class="text-sm font-semibold text-[#172033] mb-4">Supplier & Date</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-[#172033]">Supplier <span class="text-[#FF4848]">*</span></label>
+                            <label class="block text-xs font-semibold text-[#172033] mb-1.5">Supplier <span class="text-[#FF4848]">*</span></label>
                             <select name="supplier_id" required 
-                                    class="mt-1.5 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
+                                    class="w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
                                 <option value="">Select Supplier</option>
                                 @foreach($suppliers as $supplier)
                                 <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
@@ -35,22 +43,19 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-[#172033]">Purchase Date <span class="text-[#FF4848]">*</span></label>
+                            <label class="block text-xs font-semibold text-[#172033] mb-1.5">Purchase Date <span class="text-[#FF4848]">*</span></label>
                             <input type="date" name="purchase_date" value="{{ date('Y-m-d') }}" required 
-                                   class="mt-1.5 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
+                                   class="w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
                         </div>
                     </div>
                 </div>
 
-                {{-- Items Table Card --}}
+                {{-- Line Items Table --}}
                 <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
                     <div class="px-6 py-4 border-b border-[#E5E7EB] bg-slate-50/75 flex justify-between items-center">
-                        <div>
-                            <h3 class="text-sm font-semibold text-[#172033]">Order Items</h3>
-                            <p class="text-xs text-[#64748B] mt-0.5">Add items and specify unit costs</p>
-                        </div>
+                        <h3 class="text-sm font-semibold text-[#172033]">Ordered Inventory Items</h3>
                         <button type="button" @click="addItem()" 
-                                class="h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white hover:bg-slate-50 text-xs font-semibold text-[#F5703E] flex items-center gap-1.5 transition-colors shadow-sm">
+                                class="h-8 px-3 rounded-lg bg-orange-50 hover:bg-orange-100 text-xs font-semibold text-[#F5703E] border border-orange-200 flex items-center gap-1.5 transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             <span>Add Item</span>
                         </button>
@@ -62,8 +67,8 @@
                                 <tr class="bg-slate-50/50 border-b border-[#E5E7EB]">
                                     <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase w-2/5">Inventory Item</th>
                                     <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase w-1/5">Quantity</th>
-                                    <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase w-1/5">Unit Cost (₹)</th>
-                                    <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase text-right">Total (₹)</th>
+                                    <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase w-1/5">Unit Cost (@currencySymbol)</th>
+                                    <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase text-right">Total (@currencySymbol)</th>
                                     <th class="py-3 px-4 text-right w-10"></th>
                                 </tr>
                             </thead>
@@ -125,22 +130,22 @@
                     
                     <div class="flex justify-between items-center text-sm text-[#64748B]">
                         <span>Subtotal</span>
-                        <span class="font-mono font-bold text-[#172033]" x-text="'₹'+subtotal.toFixed(2)"></span>
+                        <span class="font-mono font-bold text-[#172033]" x-text="formatCurrency(subtotal)"></span>
                         <input type="hidden" name="subtotal" :value="subtotal">
                     </div>
                     <div class="flex justify-between items-center text-sm text-[#64748B]">
-                        <span>Discount (₹)</span>
+                        <span>Discount (@currencySymbol)</span>
                         <input type="number" name="discount" x-model.number="discount" step="0.01" 
                                class="w-28 h-9 px-3 bg-white border border-[#E5E7EB] rounded-lg text-xs font-mono text-right text-[#172033] focus:outline-none focus:border-[#F5703E]">
                     </div>
                     <div class="flex justify-between items-center text-sm text-[#64748B] pb-3 border-b border-[#E5E7EB]">
-                        <span>Tax (₹)</span>
+                        <span>Tax (@currencySymbol)</span>
                         <input type="number" name="tax" x-model.number="tax" step="0.01" 
                                class="w-28 h-9 px-3 bg-white border border-[#E5E7EB] rounded-lg text-xs font-mono text-right text-[#172033] focus:outline-none focus:border-[#F5703E]">
                     </div>
                     <div class="flex justify-between items-center pt-1">
                         <span class="text-sm font-semibold text-[#172033]">Total Amount</span>
-                        <span class="text-xl font-bold font-mono text-[#F5703E]" x-text="'₹'+total.toFixed(2)"></span>
+                        <span class="text-xl font-bold font-mono text-[#F5703E]" x-text="formatCurrency(total)"></span>
                         <input type="hidden" name="total_amount" :value="total">
                     </div>
                 </div>
@@ -162,7 +167,7 @@
                     </div>
 
                     <div class="pt-3 border-t border-[#E5E7EB]">
-                        <label class="block text-xs font-semibold text-[#172033]">Paid Amount (₹)</label>
+                        <label class="block text-xs font-semibold text-[#172033]">Paid Amount (@currencySymbol)</label>
                         <input type="number" name="paid_amount" step="0.01" placeholder="0.00" 
                                class="mt-1.5 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E]">
                     </div>
@@ -206,6 +211,10 @@
             discount: 0,
             tax: 0,
             
+            formatCurrency(val) {
+                return window.formatCurrency(val);
+            },
+
             addItem() {
                 this.items.push({ inventory_item_id: '', quantity: 1, unit_cost: 0, total_cost: 0 });
             },

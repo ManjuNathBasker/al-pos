@@ -15,7 +15,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Outstanding Liability</p>
-            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">₹{{ number_format($totalWalletBalance, 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#F5703E] mt-1.5">@currency($totalWalletBalance)</p>
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Filtered Transactions</p>
@@ -101,7 +101,7 @@
                             @endif
                         </td>
                         <td class="py-4 px-4 text-right text-sm font-bold font-mono {{ $tx->type === 'credit' ? 'text-[#29AB6C]' : 'text-[#FF4848]' }}">
-                            {{ $tx->type === 'credit' ? '+' : '-' }}₹{{ number_format($tx->amount, 2) }}
+                            {{ $tx->type === 'credit' ? '+' : '-' }}@currency($tx->amount)
                         </td>
                         <td class="py-4 px-4 text-xs text-[#64748B] max-w-xs truncate">{{ $tx->description }}</td>
                     </tr>

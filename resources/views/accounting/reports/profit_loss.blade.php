@@ -27,15 +27,15 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Income</p>
-            <p class="text-2xl font-bold font-mono text-[#29AB6C] mt-1.5">₹{{ number_format($report['total_income'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#29AB6C] mt-1.5">@currency($report['total_income'])</p>
         </div>
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-5">
             <p class="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Total Expenses</p>
-            <p class="text-2xl font-bold font-mono text-[#FF4848] mt-1.5">₹{{ number_format($report['total_expense'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-[#FF4848] mt-1.5">@currency($report['total_expense'])</p>
         </div>
         <div class="bg-[#172033] rounded-xl shadow-sm p-5">
             <p class="text-xs font-semibold text-white/60 uppercase tracking-wider">Net Profit</p>
-            <p class="text-2xl font-bold font-mono text-white mt-1.5">₹{{ number_format($report['net_profit'], 2) }}</p>
+            <p class="text-2xl font-bold font-mono text-white mt-1.5">@currency($report['net_profit'])</p>
         </div>
     </div>
 
@@ -52,7 +52,7 @@
                     @forelse($report['income'] as $item)
                     <tr class="hover:bg-[#FFF8F5]">
                         <td class="px-5 py-3.5 text-xs font-medium text-[#172033]">{{ $item['name'] }}</td>
-                        <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#29AB6C]">₹{{ number_format($item['amount'], 2) }}</td>
+                        <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#29AB6C]">@currency($item['amount'])</td>
                     </tr>
                     @empty
                     <tr><td colspan="2" class="px-5 py-4 text-center text-xs text-[#94A3B8]">No income recorded.</td></tr>
@@ -61,7 +61,7 @@
                 <tfoot>
                     <tr class="bg-emerald-50/50 border-t border-[#E5E7EB]">
                         <td class="px-5 py-4 text-xs font-bold text-[#29AB6C]">Total Income</td>
-                        <td class="px-5 py-4 text-right text-sm font-bold font-mono text-[#29AB6C]">₹{{ number_format($report['total_income'], 2) }}</td>
+                        <td class="px-5 py-4 text-right text-sm font-bold font-mono text-[#29AB6C]">@currency($report['total_income'])</td>
                     </tr>
                 </tfoot>
             </table>
@@ -77,7 +77,7 @@
                     @forelse($report['expenses'] as $item)
                     <tr class="hover:bg-[#FFF8F5]">
                         <td class="px-5 py-3.5 text-xs font-medium text-[#172033]">{{ $item['name'] }}</td>
-                        <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#FF4848]">₹{{ number_format($item['amount'], 2) }}</td>
+                        <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#FF4848]">@currency($item['amount'])</td>
                     </tr>
                     @empty
                     <tr><td colspan="2" class="px-5 py-4 text-center text-xs text-[#94A3B8]">No expenses recorded.</td></tr>
@@ -86,7 +86,7 @@
                 <tfoot>
                     <tr class="bg-red-50/50 border-t border-[#E5E7EB]">
                         <td class="px-5 py-4 text-xs font-bold text-[#FF4848]">Total Expenses</td>
-                        <td class="px-5 py-4 text-right text-sm font-bold font-mono text-[#FF4848]">₹{{ number_format($report['total_expense'], 2) }}</td>
+                        <td class="px-5 py-4 text-right text-sm font-bold font-mono text-[#FF4848]">@currency($report['total_expense'])</td>
                     </tr>
                 </tfoot>
             </table>

@@ -100,7 +100,7 @@
 
                         {{-- Price --}}
                         <td class="py-4 px-4 text-sm font-mono font-bold text-[#172033]">
-                            ₹{{ number_format($product->price, 2) }}
+                            @currency($product->price)
                         </td>
 
                         {{-- Stock Tracking --}}

@@ -97,7 +97,7 @@
 
                         {{-- Total Amount --}}
                         <td class="py-4 px-4 text-sm font-mono font-bold text-[#172033]">
-                            ₹{{ number_format($order->total_amount, 2) }}
+                            @currency($order->total_amount, $order)
                         </td>
 
                         {{-- Status --}}

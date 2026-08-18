@@ -318,7 +318,7 @@
                                                 <div class="flex items-center gap-1.5 text-xs font-black text-brand-700">
                                                     <span>{{ $table->activeOrder->order_number }}</span>
                                                     <span>·</span>
-                                                    <span class="price tabular">₹{{ number_format($table->activeOrder->total_amount, 2) }}</span>
+                                                    <span class="price tabular">@currency($table->activeOrder->total_amount, $table->activeOrder)</span>
                                                 </div>
                                                 <span class="text-[9px] font-bold text-brand-600 mt-0.5">
                                                     ⏱ {{ $table->activeOrder->created_at->diffForHumans(null, true) }} seated

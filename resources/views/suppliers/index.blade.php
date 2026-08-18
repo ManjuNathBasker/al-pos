@@ -92,7 +92,7 @@
 
                         {{-- Balance --}}
                         <td class="py-4 px-4 text-sm font-mono font-bold text-[#172033]">
-                            ₹{{ number_format($supplier->opening_balance, 2) }}
+                            @currency($supplier->opening_balance)
                         </td>
 
                         {{-- Status --}}
@@ -204,7 +204,7 @@
                        class="mt-1 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
             </div>
             <div>
-                <label class="block text-xs font-semibold text-[#172033]">Opening Balance (₹)</label>
+                <label class="block text-xs font-semibold text-[#172033]">Opening Balance (@currencySymbol)</label>
                 <input type="number" name="opening_balance" value="{{ $supplier->opening_balance }}" step="0.01" 
                        class="mt-1 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
             </div>
@@ -276,7 +276,7 @@
                        class="mt-1 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]" placeholder="e.g. 29AAAAA0000A1Z5">
             </div>
             <div>
-                <label class="block text-xs font-semibold text-[#172033]">Opening Balance (₹)</label>
+                <label class="block text-xs font-semibold text-[#172033]">Opening Balance (@currencySymbol)</label>
                 <input type="number" name="opening_balance" value="0" step="0.01" 
                        class="mt-1 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
             </div>

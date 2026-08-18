@@ -16,11 +16,11 @@
         @php
             $summaryItems = [
                 ['label' => 'Total Orders',    'value' => number_format($totals->total_orders ?? 0),              'color' => 'text-[#172033]'],
-                ['label' => 'Total Billed',    'value' => '₹' . number_format($totals->total_billed ?? 0, 2),      'color' => 'text-[#172033]'],
-                ['label' => 'Commission',      'value' => '₹' . number_format($totals->total_commission ?? 0, 2),  'color' => 'text-[#FF9932]'],
-                ['label' => 'Comm. Tax',       'value' => '₹' . number_format($totals->total_commission_tax ?? 0, 2), 'color' => 'text-[#F5703E]'],
-                ['label' => 'Total Deduction', 'value' => '₹' . number_format($totals->total_deduction ?? 0, 2),   'color' => 'text-[#FF4848]'],
-                ['label' => 'Net Received',    'value' => '₹' . number_format($totals->total_net_received ?? 0, 2),'color' => 'text-[#29AB6C]'],
+                ['label' => 'Total Billed',    'value' => format_currency($totals->total_billed ?? 0),           'color' => 'text-[#172033]'],
+                ['label' => 'Commission',      'value' => format_currency($totals->total_commission ?? 0),       'color' => 'text-[#FF9932]'],
+                ['label' => 'Comm. Tax',       'value' => format_currency($totals->total_commission_tax ?? 0),   'color' => 'text-[#F5703E]'],
+                ['label' => 'Total Deduction', 'value' => format_currency($totals->total_deduction ?? 0),        'color' => 'text-[#FF4848]'],
+                ['label' => 'Net Received',    'value' => format_currency($totals->total_net_received ?? 0),     'color' => 'text-[#29AB6C]'],
             ];
         @endphp
         @foreach($summaryItems as $item)
@@ -94,11 +94,11 @@
                         <td class="py-3.5 px-4 text-xs text-[#64748B]">{{ $order->created_at->format('d M Y, h:i A') }}</td>
                         <td class="py-3.5 px-4 text-xs font-medium text-[#172033]">{{ $order->customer?->name ?? 'Walk-in' }}</td>
                         <td class="py-3.5 px-4 text-xs font-semibold text-[#172033]">{{ $order->cardType?->name ?? '—' }}</td>
-                        <td class="py-3.5 px-4 text-right text-xs font-mono font-medium text-[#172033]">₹{{ number_format($order->total_amount, 2) }}</td>
-                        <td class="py-3.5 px-4 text-right text-xs font-mono text-[#FF9932]">₹{{ number_format($order->card_commission_amount, 4) }}</td>
-                        <td class="py-3.5 px-4 text-right text-xs font-mono text-[#F5703E]">₹{{ number_format($order->card_commission_tax_amount, 4) }}</td>
-                        <td class="py-3.5 px-4 text-right text-xs font-mono text-[#FF4848]">₹{{ number_format($order->card_commission_total_deduction, 4) }}</td>
-                        <td class="py-3.5 px-4 text-right text-xs font-mono font-bold text-[#29AB6C]">₹{{ number_format($order->card_net_received, 4) }}</td>
+                        <td class="py-3.5 px-4 text-right text-xs font-mono font-medium text-[#172033]">@currency($order->total_amount, $order)</td>
+                        <td class="py-3.5 px-4 text-right text-xs font-mono text-[#FF9932]">@currency($order->card_commission_amount, $order)</td>
+                        <td class="py-3.5 px-4 text-right text-xs font-mono text-[#F5703E]">@currency($order->card_commission_tax_amount, $order)</td>
+                        <td class="py-3.5 px-4 text-right text-xs font-mono text-[#FF4848]">@currency($order->card_commission_total_deduction, $order)</td>
+                        <td class="py-3.5 px-4 text-right text-xs font-mono font-bold text-[#29AB6C]">@currency($order->card_net_received, $order)</td>
                         <td class="py-3.5 px-4">
                             @php
                                 $handlingCls = [

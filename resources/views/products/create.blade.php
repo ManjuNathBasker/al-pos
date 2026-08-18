@@ -75,9 +75,9 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {{-- Selling Price --}}
                 <div>
-                    <label for="price" class="block text-xs font-semibold text-[#172033]">Selling Price (₹) <span class="text-[#FF4848]">*</span></label>
+                    <label for="price" class="block text-xs font-semibold text-[#172033]">Selling Price (@currencySymbol) <span class="text-[#FF4848]">*</span></label>
                     <div class="relative mt-1.5">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#64748B] font-mono text-sm font-semibold">₹</span>
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#64748B] font-mono text-sm font-semibold">@currencySymbol</span>
                         <input type="number" step="0.01" name="price" id="price" value="{{ old('price', '0.00') }}" required 
                                class="w-full h-11 pl-8 pr-4 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
                     </div>
@@ -86,9 +86,9 @@
 
                 {{-- Cost Price --}}
                 <div>
-                    <label for="cost_price" class="block text-xs font-semibold text-[#172033]">Cost Price (₹)</label>
+                    <label for="cost_price" class="block text-xs font-semibold text-[#172033]">Cost Price (@currencySymbol)</label>
                     <div class="relative mt-1.5">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#64748B] font-mono text-sm font-semibold">₹</span>
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#64748B] font-mono text-sm font-semibold">@currencySymbol</span>
                         <input type="number" step="0.01" name="cost_price" id="cost_price" value="{{ old('cost_price') }}" 
                                class="w-full h-11 pl-8 pr-4 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]" placeholder="0.00">
                     </div>

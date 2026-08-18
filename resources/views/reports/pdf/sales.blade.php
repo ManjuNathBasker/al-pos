@@ -12,7 +12,7 @@
         </tr>
         <tr>
             <td></td>
-            <td class="text-right"><strong>Total Sales:</strong> ${{ number_format(collect($orders)->sum('total_amount'), 2) }}</td>
+            <td class="text-right"><strong>Total Sales:</strong> @currency(collect($orders)->sum('total_amount'))</td>
         </tr>
     </table>
 </div>
@@ -36,7 +36,7 @@
             <td>{{ $order->customer->name ?? 'Walk-in' }}</td>
             <td>{{ ucfirst($order->service_type) }}</td>
             <td>{{ ucfirst($order->status) }}</td>
-            <td class="text-right">${{ number_format($order->total_amount, 2) }}</td>
+            <td class="text-right">@currency($order->total_amount, $order)</td>
         </tr>
         @empty
         <tr>

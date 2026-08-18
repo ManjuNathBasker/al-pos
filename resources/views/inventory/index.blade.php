@@ -56,7 +56,7 @@
                     </svg>
                 </div>
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Inventory Value</p>
-                <p class="text-2xl font-black text-slate-800">₹{{ number_format($stats['total_value'], 2) }}</p>
+                <p class="text-2xl font-black text-slate-800">@currency($stats['total_value'])</p>
             </div>
         </div>
 

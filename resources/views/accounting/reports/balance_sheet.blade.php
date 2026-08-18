@@ -33,7 +33,7 @@
                     @forelse($report['assets'] as $item)
                     <tr class="hover:bg-[#FFF8F5]">
                         <td class="px-5 py-3.5 text-xs font-medium text-[#172033]">{{ $item['name'] }}</td>
-                        <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#172033]">₹{{ number_format($item['amount'], 2) }}</td>
+                        <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#172033]">@currency($item['amount'])</td>
                     </tr>
                     @empty
                     <tr><td colspan="2" class="px-5 py-4 text-center text-xs text-[#94A3B8]">No assets recorded.</td></tr>
@@ -42,7 +42,7 @@
                 <tfoot>
                     <tr class="bg-blue-50/50 border-t border-[#E5E7EB]">
                         <td class="px-5 py-4 text-xs font-bold text-blue-700">Total Assets</td>
-                        <td class="px-5 py-4 text-right text-sm font-bold font-mono text-blue-700">₹{{ number_format($report['total_assets'], 2) }}</td>
+                        <td class="px-5 py-4 text-right text-sm font-bold font-mono text-blue-700">@currency($report['total_assets'])</td>
                     </tr>
                 </tfoot>
             </table>
@@ -61,7 +61,7 @@
                         @forelse($report['liabilities'] as $item)
                         <tr class="hover:bg-[#FFF8F5]">
                             <td class="px-5 py-3.5 text-xs font-medium text-[#172033]">{{ $item['name'] }}</td>
-                            <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#172033]">₹{{ number_format($item['amount'], 2) }}</td>
+                            <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#172033]">@currency($item['amount'])</td>
                         </tr>
                         @empty
                         <tr><td colspan="2" class="px-5 py-4 text-center text-xs text-[#94A3B8]">No liabilities recorded.</td></tr>
@@ -70,7 +70,7 @@
                     <tfoot>
                         <tr class="bg-red-50/50 border-t border-[#E5E7EB]">
                             <td class="px-5 py-4 text-xs font-bold text-[#FF4848]">Total Liabilities</td>
-                            <td class="px-5 py-4 text-right text-sm font-bold font-mono text-[#FF4848]">₹{{ number_format($report['total_liabilities'], 2) }}</td>
+                            <td class="px-5 py-4 text-right text-sm font-bold font-mono text-[#FF4848]">@currency($report['total_liabilities'])</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -86,7 +86,7 @@
                         @forelse($report['equity'] as $item)
                         <tr class="hover:bg-[#FFF8F5]">
                             <td class="px-5 py-3.5 text-xs font-medium text-[#172033]">{{ $item['name'] }}</td>
-                            <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#172033]">₹{{ number_format($item['amount'], 2) }}</td>
+                            <td class="px-5 py-3.5 text-right text-xs font-mono font-semibold text-[#172033]">@currency($item['amount'])</td>
                         </tr>
                         @empty
                         <tr><td colspan="2" class="px-5 py-4 text-center text-xs text-[#94A3B8]">No equity recorded.</td></tr>
@@ -95,7 +95,7 @@
                     <tfoot>
                         <tr class="bg-orange-50/50 border-t border-[#E5E7EB]">
                             <td class="px-5 py-4 text-xs font-bold text-[#F5703E]">Total Equity</td>
-                            <td class="px-5 py-4 text-right text-sm font-bold font-mono text-[#F5703E]">₹{{ number_format($report['total_equity'], 2) }}</td>
+                            <td class="px-5 py-4 text-right text-sm font-bold font-mono text-[#F5703E]">@currency($report['total_equity'])</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -104,7 +104,7 @@
             {{-- Summary Banner --}}
             <div class="bg-[#172033] rounded-xl p-5 flex justify-between items-center text-white">
                 <span class="text-sm font-semibold">Total Liabilities & Equity</span>
-                <span class="text-lg font-bold font-mono">₹{{ number_format($report['total_liabilities'] + $report['total_equity'], 2) }}</span>
+                <span class="text-lg font-bold font-mono">@currency($report['total_liabilities'] + $report['total_equity'])</span>
             </div>
         </div>
     </div>

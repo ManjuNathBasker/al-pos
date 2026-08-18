@@ -39,7 +39,7 @@
                         </td>
                         <td class="py-4 px-4 text-xs font-medium text-[#64748B]">{{ ucfirst($coupon->type) }}</td>
                         <td class="py-4 px-4 text-sm font-bold font-mono text-[#172033]">
-                            {{ $coupon->type === 'percent' ? $coupon->value . '%' : '₹' . number_format($coupon->value, 2) }}
+                            {{ $coupon->type === 'percent' ? $coupon->value . '%' : format_currency($coupon->value) }}
                         </td>
                         <td class="py-4 px-4 text-xs text-[#64748B]">
                             {{ $coupon->expiry_date ? $coupon->expiry_date->format('M d, Y') : 'No Expiry' }}

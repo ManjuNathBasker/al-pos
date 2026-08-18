@@ -108,8 +108,8 @@
                                     <div class="text-xs text-[#94A3B8]">Code: {{ $item->inventoryItem->code ?? 'N/A' }}</div>
                                 </td>
                                 <td class="py-4 text-center text-xs font-mono font-medium text-[#172033]">{{ number_format($item->quantity, 3) }} {{ $item->inventoryItem->unit_type }}</td>
-                                <td class="py-4 text-right text-xs font-mono text-[#64748B]">₹{{ number_format($item->unit_cost, 2) }}</td>
-                                <td class="py-4 text-right text-sm font-bold font-mono text-[#172033]">₹{{ number_format($item->total_cost, 2) }}</td>
+                                <td class="py-4 text-right text-xs font-mono text-[#64748B]">@currency($item->unit_cost, $purchase)</td>
+                                <td class="py-4 text-right text-sm font-bold font-mono text-[#172033]">@currency($item->total_cost, $purchase)</td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -119,31 +119,31 @@
                     <div class="w-full sm:w-80 ml-auto space-y-2.5 text-sm">
                         <div class="flex justify-between text-[#64748B]">
                             <span>Subtotal</span>
-                            <span class="font-mono font-semibold text-[#172033]">₹{{ number_format($purchase->subtotal, 2) }}</span>
+                            <span class="font-mono font-semibold text-[#172033]">@currency($purchase->subtotal, $purchase)</span>
                         </div>
                         @if($purchase->discount > 0)
                         <div class="flex justify-between text-emerald-600">
                             <span>Discount</span>
-                            <span class="font-mono">−₹{{ number_format($purchase->discount, 2) }}</span>
+                            <span class="font-mono">−@currency($purchase->discount, $purchase)</span>
                         </div>
                         @endif
                         @if($purchase->tax > 0)
                         <div class="flex justify-between text-[#64748B]">
                             <span>Tax</span>
-                            <span class="font-mono font-semibold text-[#172033]">₹{{ number_format($purchase->tax, 2) }}</span>
+                            <span class="font-mono font-semibold text-[#172033]">@currency($purchase->tax, $purchase)</span>
                         </div>
                         @endif
                         <div class="flex justify-between pt-3 border-t border-[#E5E7EB]">
                             <span class="text-base font-bold text-[#172033]">Grand Total</span>
-                            <span class="text-base font-bold font-mono text-[#F5703E]">₹{{ number_format($purchase->total_amount, 2) }}</span>
+                            <span class="text-base font-bold font-mono text-[#F5703E]">@currency($purchase->total_amount, $purchase)</span>
                         </div>
                         <div class="flex justify-between pt-2">
                             <span class="text-xs font-semibold text-[#64748B] uppercase tracking-wider">Paid</span>
-                            <span class="text-xs font-mono font-bold text-[#29AB6C]">₹{{ number_format($purchase->paid_amount, 2) }}</span>
+                            <span class="text-xs font-mono font-bold text-[#29AB6C]">@currency($purchase->paid_amount, $purchase)</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs font-semibold text-[#64748B] uppercase tracking-wider">Due</span>
-                            <span class="text-xs font-mono font-bold text-[#FF4848]">₹{{ number_format($purchase->due_amount, 2) }}</span>
+                            <span class="text-xs font-mono font-bold text-[#FF4848]">@currency($purchase->due_amount, $purchase)</span>
                         </div>
                     </div>
 
@@ -177,7 +177,7 @@
                                 <td class="py-3.5 px-4 text-xs font-medium text-[#172033]">{{ $payment->payment_date->format('M j, Y') }}</td>
                                 <td class="py-3.5 px-4 text-xs text-[#64748B]">{{ $payment->payment_method }}</td>
                                 <td class="py-3.5 px-4 text-xs font-mono text-[#64748B]">{{ $payment->reference_number ?? '—' }}</td>
-                                <td class="py-3.5 px-4 text-right text-xs font-mono font-bold text-[#172033]">₹{{ number_format($payment->paid_amount, 2) }}</td>
+                                <td class="py-3.5 px-4 text-right text-xs font-mono font-bold text-[#172033]">@currency($payment->paid_amount, $purchase)</td>
                                 <td class="py-3.5 px-4 text-right">
                                     <form action="{{ route('purchase-payments.destroy', $payment) }}" method="POST" class="inline" onsubmit="return confirm('Delete this payment record?')">
                                         @csrf @method('DELETE')
@@ -292,7 +292,7 @@
         {{-- Balance Due Banner --}}
         <div class="p-3 bg-orange-50 border border-orange-200 rounded-lg flex justify-between items-center">
             <span class="text-xs text-[#64748B]">Remaining Balance</span>
-            <span class="text-sm font-bold font-mono text-[#F5703E]">₹{{ number_format($purchase->due_amount, 2) }}</span>
+            <span class="text-sm font-bold font-mono text-[#F5703E]">@currency($purchase->due_amount, $purchase)</span>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -51,11 +51,21 @@
                         <td class="py-4 px-4 text-xs text-[#64748B]">{{ $company->email ?: '—' }}</td>
                         <td class="py-4 px-4 text-xs text-[#64748B]">{{ $company->phone ?: '—' }}</td>
                         <td class="py-4 px-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-[#29AB6C] border border-emerald-200">Active</span>
+                            @if($company->is_active)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-[#29AB6C] border border-emerald-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                    Active
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
+                                    Inactive
+                                </span>
+                            @endif
                         </td>
                         <td class="py-4 px-4 text-right">
                             <div class="inline-flex items-center justify-end gap-1.5">
-                                @if(session('company_id') != $company->id)
+                                @if(session('company_id') != $company->id && $company->is_active)
                                 <form action="{{ route('companies.switch', $company) }}" method="POST" class="inline-block">
                                     @csrf
                                     <button type="submit" title="Switch to this company"
@@ -72,13 +82,6 @@
                                    class="w-[34px] h-[34px] rounded-lg border border-[#E5E7EB] bg-white hover:bg-orange-50 text-[#64748B] hover:text-[#F5703E] hover:border-orange-200 flex items-center justify-center transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                 </a>
-                                <form action="{{ route('companies.destroy', $company) }}" method="POST" class="inline-block" onsubmit="return confirm('Delete this company and all its data?');">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" title="Delete Company"
-                                            class="w-[34px] h-[34px] rounded-lg border border-[#E5E7EB] bg-white hover:bg-red-50 text-[#64748B] hover:text-[#FF4848] hover:border-red-200 flex items-center justify-center transition-colors">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                    </button>
-                                </form>
                             </div>
                         </td>
                     </tr>

@@ -51,10 +51,10 @@
                     $waMessage .= "Date: " . $order->created_at->format('Y-m-d H:i') . "%0A";
                     $waMessage .= "-------------------%0A";
                     foreach($order->items as $item) {
-                        $waMessage .= "{$item->quantity}x {$item->product_name} - ₹" . number_format($item->subtotal, 2) . "%0A";
+                        $waMessage .= "{$item->quantity}x {$item->product_name} - " . format_currency($item->subtotal, $order) . "%0A";
                     }
                     $waMessage .= "-------------------%0A";
-                    $waMessage .= "Total: ₹" . number_format($order->total_amount, 2);
+                    $waMessage .= "Total: " . format_currency($order->total_amount, $order);
                 @endphp
                 <a href="https://wa.me/?text={{ $waMessage }}" target="_blank" 
                    class="h-10 px-4 rounded-lg bg-[#29AB6C] hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm">
@@ -118,10 +118,10 @@
                                     {{ $item->quantity }}
                                 </td>
                                 <td class="py-4 px-4 text-right font-mono text-[#64748B]">
-                                    ₹{{ number_format($item->unit_price, 2) }}
+                                    @currency($item->unit_price, $order)
                                 </td>
                                 <td class="py-4 px-6 text-right font-mono font-bold text-[#172033]">
-                                    ₹{{ number_format($item->subtotal, 2) }}
+                                    @currency($item->subtotal, $order)
                                 </td>
                             </tr>
                             @endforeach
@@ -134,21 +134,21 @@
                     <div class="w-full sm:w-80 ml-auto space-y-2.5 text-sm">
                         <div class="flex justify-between text-[#64748B]">
                             <span>Subtotal</span>
-                            <span class="font-mono font-medium text-[#172033]">₹{{ number_format($order->items->sum('subtotal'), 2) }}</span>
+                            <span class="font-mono font-medium text-[#172033]">@currency($order->items->sum('subtotal'), $order)</span>
                         </div>
                         @if($order->discount_amount > 0)
                         <div class="flex justify-between text-[#29AB6C]">
                             <span>Discount Applied</span>
-                            <span class="font-mono font-medium">-₹{{ number_format($order->discount_amount, 2) }}</span>
+                            <span class="font-mono font-medium">-@currency($order->discount_amount, $order)</span>
                         </div>
                         @endif
                         <div class="flex justify-between text-[#64748B] pb-2.5 border-b border-[#E5E7EB]">
                             <span>Tax Amount</span>
-                            <span class="font-mono font-medium text-[#172033]">₹{{ number_format($order->tax_amount ?? 0, 2) }}</span>
+                            <span class="font-mono font-medium text-[#172033]">@currency($order->tax_amount ?? 0, $order)</span>
                         </div>
                         <div class="flex justify-between text-base font-bold text-[#172033] pt-1">
                             <span>Grand Total</span>
-                            <span class="font-mono text-lg text-[#F5703E]">₹{{ number_format($order->total_amount, 2) }}</span>
+                            <span class="font-mono text-lg text-[#F5703E]">@currency($order->total_amount, $order)</span>
                         </div>
                     </div>
                 </div>
@@ -181,19 +181,19 @@
                                     <span class="font-medium text-[#172033]">{{ ucfirst($payment->payment_method) }}</span>
                                 @endif
                             </div>
-                            <span class="font-mono font-bold text-[#172033]">₹{{ number_format($payment->amount, 2) }}</span>
+                            <span class="font-mono font-bold text-[#172033]">@currency($payment->amount, $order)</span>
                         </div>
                         @endforeach
 
                         <div class="flex justify-between pt-3 mt-2 border-t border-[#E5E7EB] text-xs font-semibold text-[#64748B]">
                             <span>Total Paid</span>
-                            <span class="font-mono font-bold text-[#172033] text-sm">₹{{ number_format($order->payments->sum('amount'), 2) }}</span>
+                            <span class="font-mono font-bold text-[#172033] text-sm">@currency($order->payments->sum('amount'), $order)</span>
                         </div>
 
                         @if($order->change_returned > 0)
                         <div class="flex justify-between text-xs text-amber-600 font-semibold">
                             <span>Change Returned</span>
-                            <span class="font-mono">₹{{ number_format($order->change_returned, 2) }}</span>
+                            <span class="font-mono">@currency($order->change_returned, $order)</span>
                         </div>
                         @endif
                     @else
@@ -226,7 +226,7 @@
                         <div class="pt-2 border-t border-[#E5E7EB] flex justify-between text-xs">
                             <span class="text-[#64748B]">Wallet Balance:</span>
                             <span class="font-mono font-bold {{ $order->customer->wallet_balance >= 0 ? 'text-[#29AB6C]' : 'text-[#FF4848]' }}">
-                                ₹{{ number_format($order->customer->wallet_balance, 2) }}
+                                @currency($order->customer->wallet_balance)
                             </span>
                         </div>
                     @else
@@ -273,7 +273,7 @@
                         <span>{{ Str::limit($item->product_name, 20) }}</span>
                     </td>
                     <td style="text-align: center; vertical-align: top; padding: 4px 0;">{{ $item->quantity }}</td>
-                    <td style="text-align: right; vertical-align: top; padding: 4px 0;">₹{{ number_format($item->subtotal, 2) }}</td>
+                    <td style="text-align: right; vertical-align: top; padding: 4px 0;">@currency($item->subtotal, $order)</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -281,21 +281,21 @@
         <div style="border-top: 1px dashed #000; padding-top: 8px;">
             <div style="display: flex; justify-content: space-between;">
                 <span>SUBTOTAL:</span>
-                <span>₹{{ number_format($order->items->sum('subtotal'), 2) }}</span>
+                <span>@currency($order->items->sum('subtotal'), $order)</span>
             </div>
             @if($order->discount_amount > 0)
             <div style="display: flex; justify-content: space-between;">
                 <span>DISCOUNT:</span>
-                <span>-₹{{ number_format($order->discount_amount, 2) }}</span>
+                <span>-@currency($order->discount_amount, $order)</span>
             </div>
             @endif
             <div style="display: flex; justify-content: space-between;">
                 <span>TAX:</span>
-                <span>₹{{ number_format($order->tax_amount ?? 0, 2) }}</span>
+                <span>@currency($order->tax_amount ?? 0, $order)</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin-top: 8px; border-top: 1px dashed #000; padding-top: 8px;">
                 <span>TOTAL:</span>
-                <span>₹{{ number_format($order->total_amount, 2) }}</span>
+                <span>@currency($order->total_amount, $order)</span>
             </div>
         </div>
         <div style="text-align: center; margin-top: 24px; font-size: 12px; border-top: 1px dashed #000; padding-top: 12px;">

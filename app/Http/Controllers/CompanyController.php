@@ -27,6 +27,10 @@ class CompanyController extends Controller
 
         $user = Auth::user();
 
+        if (!$company->is_active && !$user->isAdmin()) {
+            return back()->with('error', 'Cannot switch to an inactive company.');
+        }
+
         // 1. Store active company in session
         session(['company_id' => $company->id]);
         
@@ -65,25 +69,48 @@ class CompanyController extends Controller
 
     public function create()
     {
-        return view('companies.create');
+        $currencyConfig = default_currency_config();
+        return view('companies.create', compact('currencyConfig'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'business_type' => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
+            'name'                     => 'required|string|max:255',
+            'email'                    => 'nullable|email|max:255',
+            'phone'                    => 'nullable|string|max:20',
+            'address'                  => 'nullable|string',
+            'business_type'            => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
+            'is_active'                => 'nullable|boolean',
+            'currency_name'            => 'nullable|string|max:100',
+            'currency_code'            => 'nullable|string|max:10',
+            'currency_symbol'          => 'nullable|string|max:10',
+            'currency_decimal_places'  => 'nullable|integer|min:0|max:4',
+            'currency_symbol_position' => 'nullable|in:before,after',
         ]);
 
         $user = Auth::user();
 
+        $settings = [
+            'currency' => [
+                'name'            => $request->currency_name ?: 'Indian Rupee',
+                'code'            => strtoupper(trim($request->currency_code ?: 'INR')),
+                'symbol'          => $request->currency_symbol ?: '₹',
+                'decimal_places'  => (int) ($request->currency_decimal_places ?? 2),
+                'symbol_position' => $request->currency_symbol_position ?: 'before',
+            ]
+        ];
+
+        $isActive = $request->has('is_active') ? (bool) $request->is_active : true;
+
         // Create company and set current user as owner
         $company = Company::create(array_merge(
-            $request->all(),
-            ['owner_id' => $user->id]
+            $request->only('name', 'email', 'phone', 'address', 'business_type'),
+            [
+                'is_active' => $isActive,
+                'owner_id'  => $user->id,
+                'settings'  => $settings,
+            ]
         ));
 
         // Also assign user to company_user pivot for consistency
@@ -110,8 +137,9 @@ class CompanyController extends Controller
         $this->authorize('view', $company);
 
         $cardCommissionTax = $company->getCardCommissionTax();
+        $currencyConfig    = $company->getCurrencyConfig();
 
-        return view('companies.edit', compact('company', 'cardCommissionTax'));
+        return view('companies.edit', compact('company', 'cardCommissionTax', 'currencyConfig'));
     }
 
     public function update(Request $request, Company $company)
@@ -119,21 +147,39 @@ class CompanyController extends Controller
         $this->authorize('update', $company);
 
         $request->validate([
-            'name'                => 'required|string|max:255',
-            'email'               => 'nullable|email|max:255',
-            'phone'               => 'nullable|string|max:20',
-            'address'             => 'nullable|string',
-            'business_type'       => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
-            'card_commission_tax' => 'nullable|numeric|min:0|max:100',
+            'name'                     => 'required|string|max:255',
+            'email'                    => 'nullable|email|max:255',
+            'phone'                    => 'nullable|string|max:20',
+            'address'                  => 'nullable|string',
+            'business_type'            => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
+            'is_active'                => 'nullable|boolean',
+            'card_commission_tax'      => 'nullable|numeric|min:0|max:100',
+            'currency_name'            => 'nullable|string|max:100',
+            'currency_code'            => 'nullable|string|max:10',
+            'currency_symbol'          => 'nullable|string|max:10',
+            'currency_decimal_places'  => 'nullable|integer|min:0|max:4',
+            'currency_symbol_position' => 'nullable|in:before,after',
         ]);
 
-        // Merge card_commission_tax into the settings JSON
+        // Merge card_commission_tax and currency settings into the settings JSON
         $settings = $company->settings ?? [];
         $settings['card_commission_tax'] = (float) ($request->card_commission_tax ?? 0);
+        $settings['currency'] = [
+            'name'            => $request->currency_name ?: ($settings['currency']['name'] ?? 'Indian Rupee'),
+            'code'            => strtoupper(trim($request->currency_code ?: ($settings['currency']['code'] ?? 'INR'))),
+            'symbol'          => $request->currency_symbol ?: ($settings['currency']['symbol'] ?? '₹'),
+            'decimal_places'  => isset($request->currency_decimal_places) ? (int) $request->currency_decimal_places : (int) ($settings['currency']['decimal_places'] ?? 2),
+            'symbol_position' => $request->currency_symbol_position ?: ($settings['currency']['symbol_position'] ?? 'before'),
+        ];
+
+        $isActive = $request->has('is_active') ? (bool) $request->is_active : true;
 
         $company->update(array_merge(
             $request->only('name', 'email', 'phone', 'address', 'business_type'),
-            ['settings' => $settings]
+            [
+                'is_active' => $isActive,
+                'settings'  => $settings,
+            ]
         ));
 
         return redirect()->route('companies.index')->with('success', 'Company updated successfully.');

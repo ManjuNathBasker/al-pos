@@ -452,12 +452,12 @@
                 @if($cashAccountBalance > 0)
                 <div class="flex items-center justify-between mb-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-100">
                     <span class="text-xs font-semibold text-gray-500">Cash Ledger</span>
-                    <span class="text-xs font-bold text-brand-600">${{ number_format($cashAccountBalance, 2) }}</span>
+                    <span class="text-xs font-bold text-brand-600">@currency($cashAccountBalance)</span>
                 </div>
                 @endif
 
                 <div class="relative mb-5">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">$</span>
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">@currencySymbol</span>
                     <input type="number" name="opening_amount" step="0.01" min="0" required autofocus
                         class="w-full pl-10 pr-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-gray-50 text-xl font-bold text-gray-900 outline-none focus:border-brand-500 focus:bg-white transition-all tabular"
                         placeholder="0.00" value="{{ number_format($defaultOpening, 2, '.', '') }}">
@@ -493,16 +493,16 @@
                 <div class="bg-gray-50 rounded-2xl p-4 mb-4 space-y-2 border border-gray-100">
                     <div class="flex justify-between text-xs">
                         <span class="text-gray-500">Opening Amount</span>
-                        <span class="font-bold text-gray-800">${{ number_format($openSession->opening_amount, 2) }}</span>
+                        <span class="font-bold text-gray-800">@currency($openSession->opening_amount)</span>
                     </div>
                     <div class="flex justify-between text-xs">
                         <span class="text-gray-500">Expected Closing</span>
-                        <span class="font-bold text-brand-600">${{ number_format($openSession->calculateExpectedAmount(), 2) }}</span>
+                        <span class="font-bold text-brand-600">@currency($openSession->calculateExpectedAmount())</span>
                     </div>
                 </div>
 
                 <div class="mb-4">
-                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Actual Cash Counted ($)</label>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Actual Cash Counted (@currencySymbol)</label>
                     <input type="number" name="closing_amount_actual" step="0.01" min="0" required
                         class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-lg font-bold text-gray-900 outline-none focus:border-red-500 focus:bg-white transition-all tabular"
                         placeholder="0.00">
@@ -566,7 +566,7 @@
         </div>
         <h2 class="text-2xl font-black text-gray-900 mb-1">Order Placed!</h2>
         <p class="text-xs text-gray-400 mb-2" x-text="'Order #' + lastOrderId"></p>
-        <p class="text-4xl font-black price text-brand-500 mb-6" x-text="'$'+lastOrderTotal.toFixed(2)"></p>
+        <p class="text-4xl font-black price text-brand-500 mb-6" x-text="formatCurrency(lastOrderTotal)"></p>
 
         <div class="space-y-2">
             <button @click="showOrderCompleted=false; $nextTick(()=>showBillModal=true)"
@@ -606,7 +606,7 @@
                     </div>
                     <div class="text-sm font-bold text-gray-900 truncate" x-text="table.name"></div>
                     <div class="text-[10px] text-gray-400 mb-2 truncate" x-text="table.section ? table.section.name : 'Main Dining Area'"></div>
-                    <div class="text-sm font-black price text-brand-500" x-text="'$'+parseFloat(table.active_order.total_amount).toFixed(2)"></div>
+                    <div class="text-sm font-black price text-brand-500" x-text="formatCurrency(table.active_order.total_amount)"></div>
                 </button>
             </template>
             <template x-if="activeTablesList.length===0">
@@ -649,19 +649,19 @@
                             <tr>
                                 <td style="padding:4px 0;"><span x-text="item.name"></span><br><small x-text="'SKU: '+(item.sku||'N/A')" style="font-size:9px;color:#555;"></small></td>
                                 <td style="text-align:center;" x-text="item.qty"></td>
-                                <td style="text-align:right;" x-text="'$'+(item.price*item.qty).toFixed(2)"></td>
+                                <td style="text-align:right;" x-text="formatCurrency(item.price*item.qty)"></td>
                             </tr>
                         </template>
                     </tbody>
                 </table>
                 <div style="border-top:1px dashed #000;padding-top:6px;font-size:11px;">
-                    <div style="display:flex;justify-content:space-between;"><span>Subtotal:</span><span x-text="'$'+lastOrderSubtotal.toFixed(2)"></span></div>
+                    <div style="display:flex;justify-content:space-between;"><span>Subtotal:</span><span x-text="formatCurrency(lastOrderSubtotal)"></span></div>
                     <template x-if="lastOrderDiscount>0">
-                        <div style="display:flex;justify-content:space-between;"><span x-text="'Discount ('+(lastOrderDiscountPercent||0)+'%):'" ></span><span x-text="'-$'+lastOrderDiscount.toFixed(2)"></span></div>
+                        <div style="display:flex;justify-content:space-between;"><span x-text="'Discount ('+(lastOrderDiscountPercent||0)+'%):'" ></span><span x-text="'-' + formatCurrency(lastOrderDiscount)"></span></div>
                     </template>
-                    <div style="display:flex;justify-content:space-between;"><span>Tax (8%):</span><span x-text="'$'+lastOrderTax.toFixed(2)"></span></div>
+                    <div style="display:flex;justify-content:space-between;"><span>Tax (8%):</span><span x-text="formatCurrency(lastOrderTax)"></span></div>
                     <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin-top:6px;border-top:1px dashed #000;padding-top:6px;">
-                        <span>TOTAL:</span><span x-text="'$'+lastOrderTotal.toFixed(2)"></span>
+                        <span>TOTAL:</span><span x-text="formatCurrency(lastOrderTotal)"></span>
                     </div>
                 </div>
                 <div style="text-align:center;margin-top:16px;font-size:10px;border-top:1px dashed #000;padding-top:10px;">
@@ -935,7 +935,7 @@
                             </div>
 
                             <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                                <span class="text-sm font-black price text-brand-500 tabular" x-text="'$'+parseFloat(product.price).toFixed(2)"></span>
+                                <span class="text-sm font-black price text-brand-500 tabular" x-text="formatCurrency(product.price)"></span>
 
                                 <button type="button" class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
                                      :class="isInCart(product.id) ? 'bg-emerald-500 text-white shadow-sm' : 'bg-brand-50 text-brand-600 hover:bg-brand-500 hover:text-white'">
@@ -982,7 +982,7 @@
                         <div class="flex items-center gap-4 flex-shrink-0">
                             <div class="text-right">
                                 <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Price</span>
-                                <span class="text-sm sm:text-base font-black price text-brand-500 tabular" x-text="'$'+parseFloat(product.price).toFixed(2)"></span>
+                                <span class="text-sm sm:text-base font-black price text-brand-500 tabular" x-text="formatCurrency(product.price)"></span>
                             </div>
                             <button type="button" class="w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm"
                                 :class="isInCart(product.id) ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-brand-50 text-brand-600 hover:bg-brand-500 hover:text-white border border-brand-200 hover:border-brand-500'">
@@ -1052,12 +1052,12 @@
                         {{-- Info --}}
                         <div class="flex-1 min-w-0">
                             <h4 class="text-xs font-bold text-gray-900 truncate leading-snug" x-text="item.name"></h4>
-                            <p class="text-[10px] font-semibold text-gray-400 tabular" x-text="'$'+parseFloat(item.price).toFixed(2)+' each'"></p>
+                            <p class="text-[10px] font-semibold text-gray-400 tabular" x-text="formatCurrency(item.price)+' each'"></p>
                         </div>
 
                         {{-- Line Total --}}
                         <div class="text-right flex-shrink-0">
-                            <span class="text-xs font-black price text-gray-900 tabular" x-text="'$'+(item.price*item.qty).toFixed(2)"></span>
+                            <span class="text-xs font-black price text-gray-900 tabular" x-text="formatCurrency(item.price*item.qty)"></span>
                         </div>
                     </div>
 
@@ -1087,7 +1087,7 @@
                     <span class="text-xs font-bold" :class="showDiscount ? 'text-brand-600' : 'text-gray-700'">Discount & Coupons</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-xs font-black text-red-500 price tabular" x-show="discountAmount>0" x-text="'-$'+discountAmount.toFixed(2)"></span>
+                    <span class="text-xs font-black text-red-500 price tabular" x-show="discountAmount>0" x-text="'-' + formatCurrency(discountAmount)"></span>
                     <svg class="w-3.5 h-3.5 text-gray-400 transition-transform" :class="showDiscount ? 'rotate-180 text-brand-500' : ''" fill="currentColor" viewBox="0 0 24 24"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                 </div>
             </button>
@@ -1096,12 +1096,12 @@
                 {{-- Type Switcher --}}
                 <div class="flex bg-gray-100 p-1 rounded-xl gap-1">
                     <button @click="discountType='percent'" class="flex-1 py-1 text-[10px] font-extrabold uppercase rounded-lg transition-all" :class="discountType==='percent' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500'">% Percentage</button>
-                    <button @click="discountType='fixed'" class="flex-1 py-1 text-[10px] font-extrabold uppercase rounded-lg transition-all" :class="discountType==='fixed' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500'">$ Fixed Amount</button>
+                    <button @click="discountType='fixed'" class="flex-1 py-1 text-[10px] font-extrabold uppercase rounded-lg transition-all" :class="discountType==='fixed' ? 'bg-brand-500 text-white shadow-sm' : 'text-gray-500'"><span x-text="currency.symbol"></span> Fixed Amount</button>
                 </div>
 
                 {{-- Amount Input --}}
                 <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs" x-text="discountType==='percent' ? '%' : '$'"></span>
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs" x-text="discountType==='percent' ? '%' : currency.symbol"></span>
                     <input type="number" x-model="discountValue" :placeholder="discountType==='percent' ? '0' : '0.00'"
                         class="w-full pl-7 pr-8 py-2 rounded-xl text-xs font-bold text-gray-900 bg-gray-50 border border-gray-200 focus:border-brand-500 outline-none tabular">
                     <button x-show="discountValue>0" @click="discountValue=0" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500">
@@ -1132,22 +1132,22 @@
             <div class="space-y-1.5 text-xs font-semibold">
                 <div class="flex justify-between text-gray-500">
                     <span>Subtotal</span>
-                    <span class="text-gray-900 price tabular" x-text="'$'+cartSubtotal.toFixed(2)"></span>
+                    <span class="text-gray-900 price tabular" x-text="formatCurrency(cartSubtotal)"></span>
                 </div>
                 <template x-if="discountAmount>0">
                     <div class="flex justify-between text-red-500">
                         <span>Discount</span>
-                        <span class="price tabular" x-text="'-$'+discountAmount.toFixed(2)"></span>
+                        <span class="price tabular" x-text="'-' + formatCurrency(discountAmount)"></span>
                     </div>
                 </template>
                 <div class="flex justify-between text-gray-500">
                     <span>Tax (8%)</span>
-                    <span class="text-gray-900 price tabular" x-text="'$'+taxAmount.toFixed(2)"></span>
+                    <span class="text-gray-900 price tabular" x-text="formatCurrency(taxAmount)"></span>
                 </div>
                 <template x-if="cardServiceCharge>0">
                     <div class="flex justify-between text-gray-500">
                         <span>Card Service Charge</span>
-                        <span class="text-gray-900 price tabular" x-text="'+$'+cardServiceCharge.toFixed(2)"></span>
+                        <span class="text-gray-900 price tabular" x-text="'+' + formatCurrency(cardServiceCharge)"></span>
                     </div>
                 </template>
             </div>
@@ -1155,7 +1155,7 @@
             {{-- Grand Total Display --}}
             <div class="flex items-center justify-between mt-3 pt-3 border-t-2 border-gray-200">
                 <span class="text-sm font-black text-gray-900 uppercase tracking-tight">Total</span>
-                <span class="text-3xl font-black price text-brand-500 tabular" x-text="'$'+grandTotal.toFixed(2)"></span>
+                <span class="text-3xl font-black price text-brand-500 tabular" x-text="formatCurrency(grandTotal)"></span>
             </div>
         </div>
 
@@ -1165,7 +1165,7 @@
                 class="btn-checkout-primary checkout-btn w-full py-4 text-sm flex items-center justify-center gap-2.5">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 <span x-show="cartItems.length===0">Add items to order</span>
-                <span x-show="cartItems.length>0" x-text="'Charge $'+grandTotal.toFixed(2)+' →'"></span>
+                <span x-show="cartItems.length>0" x-text="'Charge ' + formatCurrency(grandTotal) + ' →'"></span>
             </button>
         </div>
     </aside>
@@ -1190,7 +1190,7 @@
             <div class="flex items-center gap-4">
                 <div class="text-right">
                     <span class="text-[10px] font-bold text-gray-400 uppercase">Grand Total</span>
-                    <p class="text-2xl font-black price text-brand-500 tabular" x-text="'$'+grandTotal.toFixed(2)"></p>
+                    <p class="text-2xl font-black price text-brand-500 tabular" x-text="formatCurrency(grandTotal)"></p>
                 </div>
                 <button @click="showBillingModal=false" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-all">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1211,26 +1211,26 @@
                                 <div class="flex items-center justify-between gap-2">
                                     <div class="min-w-0">
                                         <p class="text-xs font-bold text-gray-900 truncate" x-text="item.name"></p>
-                                        <p class="text-[10px] text-gray-400 tabular" x-text="'Qty: ' + item.qty + ' × $' + parseFloat(item.price).toFixed(2)"></p>
+                                        <p class="text-[10px] text-gray-400 tabular" x-text="'Qty: ' + item.qty + ' × ' + formatCurrency(item.price)"></p>
                                     </div>
-                                    <span class="text-xs font-black price text-gray-900 tabular" x-text="'$'+(item.price*item.qty).toFixed(2)"></span>
+                                    <span class="text-xs font-black price text-gray-900 tabular" x-text="formatCurrency(item.price*item.qty)"></span>
                                 </div>
                             </template>
                         </div>
                     </div>
 
                     <div class="p-3 bg-gray-50 rounded-2xl border border-gray-100 space-y-1.5 text-xs font-semibold">
-                        <div class="flex justify-between text-gray-500"><span>Subtotal</span><span class="text-gray-900 price tabular" x-text="'$'+cartSubtotal.toFixed(2)"></span></div>
+                        <div class="flex justify-between text-gray-500"><span>Subtotal</span><span class="text-gray-900 price tabular" x-text="formatCurrency(cartSubtotal)"></span></div>
                         <template x-if="discountAmount>0">
-                            <div class="flex justify-between text-red-500"><span>Discount</span><span class="price tabular" x-text="'-$'+discountAmount.toFixed(2)"></span></div>
+                            <div class="flex justify-between text-red-500"><span>Discount</span><span class="price tabular" x-text="'-' + formatCurrency(discountAmount)"></span></div>
                         </template>
-                        <div class="flex justify-between text-gray-500"><span>Tax (8%)</span><span class="text-gray-900 price tabular" x-text="'$'+taxAmount.toFixed(2)"></span></div>
+                        <div class="flex justify-between text-gray-500"><span>Tax (8%)</span><span class="text-gray-900 price tabular" x-text="formatCurrency(taxAmount)"></span></div>
                         <template x-if="cardServiceCharge>0">
-                            <div class="flex justify-between text-gray-500"><span>Card Service Charge</span><span class="text-gray-900 price tabular" x-text="'+$'+cardServiceCharge.toFixed(2)"></span></div>
+                            <div class="flex justify-between text-gray-500"><span>Card Service Charge</span><span class="text-gray-900 price tabular" x-text="'+' + formatCurrency(cardServiceCharge)"></span></div>
                         </template>
                         <div class="flex justify-between pt-2 mt-1 border-t border-gray-200 text-sm font-black">
                             <span class="text-gray-900">Total Due</span>
-                            <span class="text-brand-500 price tabular" x-text="'$'+grandTotal.toFixed(2)"></span>
+                            <span class="text-brand-500 price tabular" x-text="formatCurrency(grandTotal)"></span>
                         </div>
                     </div>
                 </div>
@@ -1280,7 +1280,7 @@
                         <div class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 border border-gray-200 mb-2.5">
                             <div>
                                 <p class="text-xs font-bold text-gray-800">Customer Wallet</p>
-                                <p class="text-[10px] text-gray-400 tabular" x-text="'Balance: $'+(customer.wallet_balance||0).toFixed(2)"></p>
+                                <p class="text-[10px] text-gray-400 tabular" x-text="'Balance: ' + formatCurrency(customer.wallet_balance||0)"></p>
                             </div>
                             <label class="flex items-center gap-1.5 cursor-pointer">
                                 <input type="checkbox" x-model="useWallet" @change="recalcCash" class="w-4 h-4 rounded accent-brand-500">
@@ -1303,7 +1303,7 @@
                                             </select>
                                         </div>
                                         <div class="flex-1">
-                                            <label class="text-[9px] font-bold text-gray-400 uppercase">Amount ($)</label>
+                                            <label class="text-[9px] font-bold text-gray-400 uppercase">Amount (<span x-text="currency.symbol"></span>)</label>
                                             <input type="number" x-model="p.amount"
                                                 @input="if(cards.some(c=>String(c.settlement_account_id)===String(p.method)))resolveOffersForSplitCard(index,p.card_id,p.amount)"
                                                 class="w-full px-2 py-1.5 rounded-lg text-xs font-bold font-mono text-gray-900 bg-white border border-gray-200 outline-none tabular">
@@ -1348,7 +1348,7 @@
                     <span class="text-xs font-bold" x-text="paymentDifference>0 ? 'Remaining Balance' : 'Payment Balanced'"></span>
                 </div>
                 <div class="text-right">
-                    <span class="text-base font-black price tabular" x-text="'$'+Math.abs(paymentDifference).toFixed(2)"></span>
+                    <span class="text-base font-black price tabular" x-text="formatCurrency(Math.abs(paymentDifference))"></span>
                 </div>
             </div>
 
@@ -1373,6 +1373,16 @@
 function posApp() {
     return {
         // ── State ──
+        currency: {!! json_encode($currencyConfig ?? current_currency_config()) !!},
+        formatCurrency(val) {
+            const num = parseFloat(val) || 0;
+            const isNegative = num < 0;
+            const absNum = Math.abs(num);
+            const d = typeof this.currency.decimal_places === 'number' ? this.currency.decimal_places : 2;
+            const formatted = absNum.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+            const res = this.currency.symbol_position === 'after' ? `${formatted} ${this.currency.symbol}` : `${this.currency.symbol}${formatted}`;
+            return isNegative ? `-${res}` : res;
+        },
         showCloseRegister: false,
         activeCategory: 'all',
         activeCategoryName: 'All Items',
@@ -1807,7 +1817,7 @@ function posApp() {
 
         shareOnWhatsApp() {
             const ph = this.lastOrderCustomer.phone.replace(/\D/g,'');
-            const msg = `Order #${this.lastOrderId}\nTotal: $${this.lastOrderTotal.toFixed(2)}\n\nThank you for your visit!`;
+            const msg = `Order #${this.lastOrderId}\nTotal: ${this.formatCurrency(this.lastOrderTotal)}\n\nThank you for your visit!`;
             window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`,'_blank');
         },
 

@@ -6,6 +6,20 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'POS Admin') }}</title>
 
+    <script>
+        window.currencyConfig = @json($currencyConfig ?? current_currency_config());
+        window.formatCurrency = window.formatCurrency || function(amount, config) {
+            const cfg = config || window.currencyConfig || { symbol: '₹', decimal_places: 2, symbol_position: 'before' };
+            const num = parseFloat(amount) || 0;
+            const isNegative = num < 0;
+            const absNum = Math.abs(num);
+            const decimals = typeof cfg.decimal_places === 'number' ? cfg.decimal_places : 2;
+            const formatted = absNum.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            const res = (cfg.symbol_position === 'after') ? `${formatted} ${cfg.symbol}` : `${cfg.symbol}${formatted}`;
+            return isNegative ? `-${res}` : res;
+        };
+    </script>
+
     {{-- Vite compiled CSS + JS (includes Alpine.js from app.js) --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 

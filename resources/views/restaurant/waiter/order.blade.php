@@ -127,7 +127,7 @@
 
                             {{-- Bottom Price & Stepper Action --}}
                             <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
-                                <span class="font-black text-base text-gray-900">₹{{ number_format($product->price, 2) }}</span>
+                                <span class="font-black text-base text-gray-900">@currency($product->price)</span>
 
                                 <div class="flex items-center gap-2">
                                     <template x-if="isInCart({{ $product->id }})">
@@ -181,7 +181,7 @@
                 </div>
                 <div class="text-left">
                     <span class="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">ORDER SUMMARY</span>
-                    <span class="text-base font-black text-white" x-text="'₹' + cartTotal.toFixed(2)"></span>
+                    <span class="text-base font-black text-white" x-text="formatCurrency(cartTotal)"></span>
                 </div>
             </div>
             <div class="flex items-center gap-1.5 text-xs font-black text-orange-400">
@@ -220,7 +220,7 @@
                     <div class="flex items-center justify-between bg-gray-50 p-3.5 rounded-2xl border border-gray-200/70">
                         <div>
                             <p class="font-bold text-gray-900 text-xs" x-text="item.name"></p>
-                            <p class="text-[11px] text-gray-400 font-semibold mt-0.5" x-text="'₹' + item.price.toFixed(2) + ' × ' + item.qty"></p>
+                            <p class="text-[11px] text-gray-400 font-semibold mt-0.5" x-text="formatCurrency(item.price) + ' × ' + item.qty"></p>
                         </div>
                         <div class="flex items-center gap-2">
                             <button @click="updateQty(item.id, -1)" class="w-7 h-7 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-gray-700 font-bold text-xs shadow-xs hover:bg-gray-100">-</button>
@@ -235,7 +235,7 @@
             <div class="px-6 py-5 bg-gray-50 border-t border-gray-100 space-y-4">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Bill Amount</span>
-                    <span class="text-2xl font-black text-gray-900" x-text="'₹' + cartTotal.toFixed(2)"></span>
+                    <span class="text-2xl font-black text-gray-900" x-text="formatCurrency(cartTotal)"></span>
                 </div>
                 <button @click="placeOrder()" :disabled="isPlacing"
                         class="w-full text-white rounded-2xl py-3.5 font-black text-sm shadow-xl shadow-brand-500/25 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
@@ -309,7 +309,7 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3">
-                                        <span class="font-black text-xs text-gray-900" x-text="'₹' + parseFloat(item.subtotal).toFixed(2)"></span>
+                                        <span class="font-black text-xs text-gray-900" x-text="formatCurrency(item.subtotal)"></span>
                                         <template x-if="item.kitchen_status === 'pending'">
                                             <button @click="removeItem(item.id)" class="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -331,7 +331,7 @@
 
                             <template x-if="activeOrder.status === 'paid'">
                                 <button @click="completeOrder()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-2 text-xs">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                     <span>Complete & Free Table</span>
                                 </button>
                             </template>
@@ -394,6 +394,16 @@
     <script>
         function guestApp() {
             return {
+                currency: {!! json_encode(current_currency_config()) !!},
+                formatCurrency(val) {
+                    const num = parseFloat(val) || 0;
+                    const isNegative = num < 0;
+                    const absNum = Math.abs(num);
+                    const d = typeof this.currency.decimal_places === 'number' ? this.currency.decimal_places : 2;
+                    const formatted = absNum.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+                    const res = this.currency.symbol_position === 'after' ? `${formatted} ${this.currency.symbol}` : `${this.currency.symbol}${formatted}`;
+                    return isNegative ? `-${res}` : res;
+                },
                 activeCategory: 'all',
                 cart: [],
                 showCheckout: false,

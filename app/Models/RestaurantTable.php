@@ -20,6 +20,11 @@ class RestaurantTable extends Model
         'customer_phone',
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function section()
     {
         return $this->belongsTo(TableSection::class, 'section_id');

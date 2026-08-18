@@ -78,7 +78,7 @@
                         </td>
                         <td class="py-4 px-4 text-xs text-[#64748B]">{{ $expense->account->account_name ?? 'N/A' }}</td>
                         <td class="py-4 px-4 text-xs text-[#64748B] max-w-xs truncate">{{ $expense->notes }}</td>
-                        <td class="py-4 px-4 text-sm font-mono font-bold text-[#FF4848] text-right">₹{{ number_format($expense->amount, 2) }}</td>
+                        <td class="py-4 px-4 text-sm font-mono font-bold text-[#FF4848] text-right">@currency($expense->amount)</td>
                     </tr>
                     @empty
                     <tr>
@@ -123,7 +123,7 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-semibold text-[#172033]">Amount (₹) <span class="text-[#FF4848]">*</span></label>
+                <label class="block text-xs font-semibold text-[#172033]">Amount (@currencySymbol) <span class="text-[#FF4848]">*</span></label>
                 <input type="number" step="0.01" name="amount" required placeholder="0.00"
                        class="mt-1 w-full h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]">
             </div>

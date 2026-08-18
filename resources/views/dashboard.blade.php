@@ -63,7 +63,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     </div>
                 </div>
-                <h3 class="text-4xl font-extrabold text-slate-800 tracking-tight">${{ number_format($todaySales, 2) }}</h3>
+                <h3 class="text-4xl font-extrabold text-slate-800 tracking-tight">@currency($todaySales)</h3>
             </div>
         </div>
 
@@ -91,7 +91,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
                     </div>
                 </div>
-                <h3 class="text-4xl font-extrabold text-slate-800 tracking-tight">${{ number_format($monthlySales, 2) }}</h3>
+                <h3 class="text-4xl font-extrabold text-slate-800 tracking-tight">@currency($monthlySales)</h3>
             </div>
         </div>
     </div>
@@ -123,7 +123,7 @@
                         <p class="text-xs text-slate-500 font-medium mt-0.5">{{ $order->customer ? $order->customer->name : 'Walk-in Customer' }}</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-sm font-extrabold text-slate-800">${{ number_format($order->total_amount, 2) }}</p>
+                        <p class="text-sm font-extrabold text-slate-800">@currency($order->total_amount, $order)</p>
                         <span class="inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
                             {{ $order->status }}
                         </span>
@@ -163,7 +163,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Revenue ($)',
+                    label: 'Revenue ({{ currency_symbol() }})',
                     data: data,
                     borderColor: '#4f46e5', // Indigo 600
                     backgroundColor: gradient,
@@ -193,7 +193,7 @@
                         displayColors: false,
                         callbacks: {
                             label: function(context) {
-                                return '$' + context.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                return window.formatCurrency(context.parsed.y);
                             }
                         }
                     }
@@ -211,7 +211,7 @@
                             font: { family: "'DM Sans', sans-serif", weight: '600' },
                             padding: 10,
                             callback: function(value) {
-                                return '$' + value;
+                                return window.formatCurrency(value);
                             }
                         }
                     },

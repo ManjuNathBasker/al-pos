@@ -38,8 +38,8 @@
                         <td class="py-4 px-4 text-xs font-bold font-mono text-[#F5703E]">#{{ $order->order_number ?: $order->id }}</td>
                         <td class="py-4 px-4 text-xs text-[#64748B]">{{ $order->created_at->format('M d, Y h:i A') }}</td>
                         <td class="py-4 px-4 text-xs font-medium text-[#172033]">{{ $order->customer->name ?? 'Walk-in' }}</td>
-                        <td class="py-4 px-4 text-right text-xs font-mono font-semibold text-[#172033]">₹{{ number_format($order->total_amount, 2) }}</td>
-                        <td class="py-4 px-4 text-right text-xs font-mono font-semibold text-[#FF4848]">₹{{ number_format($order->delivery_commission_amount, 2) }}</td>
+                        <td class="py-4 px-4 text-right text-xs font-mono font-semibold text-[#172033]">@currency($order->total_amount, $order)</td>
+                        <td class="py-4 px-4 text-right text-xs font-mono font-semibold text-[#FF4848]">@currency($order->delivery_commission_amount, $order)</td>
                         <td class="py-4 px-4">
                             @if($order->settlement_status === 'settled')
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-[#29AB6C] border border-emerald-200">

@@ -8,7 +8,7 @@
     <table>
         <tr>
             <td><strong>Period:</strong> {{ $startDate }} to {{ $endDate }}</td>
-            <td class="text-right"><strong>Net Profit:</strong> ${{ number_format($report['net_profit'], 2) }}</td>
+            <td class="text-right"><strong>Net Profit:</strong> @currency($report['net_profit'])</td>
         </tr>
     </table>
 </div>
@@ -25,7 +25,7 @@
         @forelse($report['income'] as $item)
         <tr>
             <td>{{ $item['name'] }}</td>
-            <td class="text-right">${{ number_format($item['amount'], 2) }}</td>
+            <td class="text-right">@currency($item['amount'])</td>
         </tr>
         @empty
         <tr>
@@ -36,7 +36,7 @@
     <tfoot>
         <tr>
             <th>Total Income</th>
-            <th class="text-right">${{ number_format($report['total_income'], 2) }}</th>
+            <th class="text-right">@currency($report['total_income'])</th>
         </tr>
     </tfoot>
 </table>
@@ -53,7 +53,7 @@
         @forelse($report['expenses'] as $item)
         <tr>
             <td>{{ $item['name'] }}</td>
-            <td class="text-right">${{ number_format($item['amount'], 2) }}</td>
+            <td class="text-right">@currency($item['amount'])</td>
         </tr>
         @empty
         <tr>
@@ -64,7 +64,7 @@
     <tfoot>
         <tr>
             <th>Total Expenses</th>
-            <th class="text-right">${{ number_format($report['total_expense'], 2) }}</th>
+            <th class="text-right">@currency($report['total_expense'])</th>
         </tr>
     </tfoot>
 </table>
@@ -72,7 +72,7 @@
 <table class="data-table">
     <tr>
         <th style="font-size: 16px;">NET PROFIT</th>
-        <th class="text-right" style="font-size: 16px;">${{ number_format($report['net_profit'], 2) }}</th>
+        <th class="text-right" style="font-size: 16px;">@currency($report['net_profit'])</th>
     </tr>
 </table>
 @endsection

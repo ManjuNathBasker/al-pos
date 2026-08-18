@@ -56,7 +56,7 @@
         <div class="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm">
             <span class="text-xs font-medium text-[#64748B] uppercase tracking-wider">Wallet Balance</span>
             <div class="text-2xl font-bold font-mono {{ $customer->wallet_balance >= 0 ? 'text-[#29AB6C]' : 'text-[#FF4848]' }} mt-1">
-                ₹{{ number_format($customer->wallet_balance, 2) }}
+                @currency($customer->wallet_balance)
             </div>
             <p class="text-xs text-[#64748B] mt-0.5">Available prepaid credits</p>
         </div>
@@ -67,8 +67,8 @@
         </div>
         <div class="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm">
             <span class="text-xs font-medium text-[#64748B] uppercase tracking-wider">Lifetime Spend</span>
-            <div class="text-2xl font-bold font-mono text-[#172033] mt-1">₹{{ number_format($stats['total_spent'], 2) }}</div>
-            <p class="text-xs text-[#29AB6C] mt-0.5">Avg ₹{{ number_format($stats['avg_order_value'], 2) }} per order</p>
+            <div class="text-2xl font-bold font-mono text-[#172033] mt-1">@currency($stats['total_spent'])</div>
+            <p class="text-xs text-[#29AB6C] mt-0.5">Avg @currency($stats['avg_order_value']) per order</p>
         </div>
         <div class="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm">
             <span class="text-xs font-medium text-[#64748B] uppercase tracking-wider">Last Visit</span>
@@ -147,7 +147,7 @@
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4 text-right font-mono font-bold text-[#172033]">
-                                    ₹{{ number_format($order->total_amount, 2) }}
+                                    @currency($order->total_amount, $order)
                                 </td>
                                 <td class="py-3.5 px-4 text-center">
                                     @if($order->status == 'paid')
@@ -222,7 +222,7 @@
                                     @endif
                                 </td>
                                 <td class="py-3.5 px-4 text-xs font-mono font-bold {{ $tx->type === 'credit' ? 'text-[#29AB6C]' : 'text-[#FF4848]' }}">
-                                    {{ $tx->type === 'credit' ? '+' : '-' }}₹{{ number_format($tx->amount, 2) }}
+                                    {{ $tx->type === 'credit' ? '+' : '-' }}@currency($tx->amount)
                                 </td>
                                 <td class="py-3.5 px-6 text-xs text-[#64748B]">
                                     {{ $tx->description ?: '—' }}
@@ -266,9 +266,9 @@
                             </select>
                         </div>
                         <div>
-                            <label for="amount" class="block text-xs font-semibold text-[#172033]">Amount (₹)</label>
+                            <label for="amount" class="block text-xs font-semibold text-[#172033]">Amount (@currencySymbol)</label>
                             <div class="relative mt-1">
-                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#64748B] font-mono text-sm font-semibold">₹</span>
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#64748B] font-mono text-sm font-semibold">@currencySymbol</span>
                                 <input type="number" name="amount" id="amount" step="0.01" min="0.01" required 
                                        class="w-full h-11 pl-8 pr-4 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E]" placeholder="0.00">
                             </div>

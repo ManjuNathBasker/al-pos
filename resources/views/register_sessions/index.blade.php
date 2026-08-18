@@ -44,22 +44,22 @@
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-[#64748B] border border-slate-200">Closed</span>
                             @endif
                         </td>
-                        <td class="py-4 px-4 text-xs font-mono font-medium text-[#172033] text-right">₹{{ number_format($session->opening_amount, 2) }}</td>
+                        <td class="py-4 px-4 text-xs font-mono font-medium text-[#172033] text-right">@currency($session->opening_amount)</td>
                         <td class="py-4 px-4 text-xs font-mono text-[#64748B] text-right">
-                            {{ $session->closing_amount_expected !== null ? '₹' . number_format($session->closing_amount_expected, 2) : '—' }}
+                            {{ $session->closing_amount_expected !== null ? format_currency($session->closing_amount_expected) : '—' }}
                         </td>
                         <td class="py-4 px-4 text-xs font-mono text-[#64748B] text-right">
-                            {{ $session->closing_amount_actual !== null ? '₹' . number_format($session->closing_amount_actual, 2) : '—' }}
+                            {{ $session->closing_amount_actual !== null ? format_currency($session->closing_amount_actual) : '—' }}
                         </td>
                         <td class="py-4 px-4 text-xs font-bold font-mono text-right">
                             @if($session->difference === null)
                                 <span class="text-[#94A3B8]">—</span>
                             @elseif($session->difference == 0)
-                                <span class="text-[#64748B]">₹0.00</span>
+                                <span class="text-[#64748B]">@currency(0)</span>
                             @elseif($session->difference < 0)
-                                <span class="text-[#FF4848]">-₹{{ number_format(abs($session->difference), 2) }}</span>
+                                <span class="text-[#FF4848]">@currency($session->difference)</span>
                             @else
-                                <span class="text-[#29AB6C]">+₹{{ number_format($session->difference, 2) }}</span>
+                                <span class="text-[#29AB6C]">+@currency($session->difference)</span>
                             @endif
                         </td>
                         <td class="py-4 px-4 text-xs text-[#64748B] max-w-xs truncate" title="{{ $session->notes }}">{{ $session->notes ?? '—' }}</td>

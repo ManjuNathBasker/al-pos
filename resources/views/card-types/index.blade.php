@@ -48,7 +48,7 @@
                             @if($type->commission_type === 'percentage')
                                 {{ number_format($type->commission_value, 2) }}%
                             @else
-                                ₹{{ number_format($type->commission_value, 2) }} (fixed)
+                                @currency($type->commission_value) (fixed)
                             @endif
                         </td>
                         <td class="py-4 px-4">

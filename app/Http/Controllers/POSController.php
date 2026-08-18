@@ -57,9 +57,10 @@ class POSController extends Controller
         $cardAccountIds = $paymentAccounts->where('is_card_account', true)->pluck('id');
         $cardTypes = CardType::where('status', true)->orderBy('name')->get();
 
-        // Load company card commission tax setting
+        // Load company and settings
         $company = Company::find(session('company_id'));
         $cardCommissionTax = $company ? $company->getCardCommissionTax() : 0;
+        $currencyConfig = $company ? $company->getCurrencyConfig() : default_currency_config();
 
         // Load delivery partners
         $deliveryPartners = \App\Models\DeliveryPartner::where('company_id', session('company_id'))
@@ -68,7 +69,7 @@ class POSController extends Controller
 
         return view('pos.index', compact(
             'categories', 'products', 'cart', 'paymentAccounts',
-            'cardAccountIds', 'cardTypes', 'cardCommissionTax', 'deliveryPartners'
+            'cardAccountIds', 'cardTypes', 'cardCommissionTax', 'currencyConfig', 'deliveryPartners'
         ));
     }
 
@@ -310,6 +311,8 @@ class POSController extends Controller
 
         // Fetch open register session for cash shift mode (if any)
         $openSession = \App\Models\RegisterSession::openForUser(auth()->id())->first();
+        $company = Company::find(session('company_id'));
+        $currencyConfig = $company ? $company->getCurrencyConfig() : default_currency_config();
 
         DB::beginTransaction();
         try {
@@ -482,6 +485,11 @@ class POSController extends Controller
                 'delivery_partner_id'             => $deliveryPartnerId ?: null,
                 'delivery_commission_amount'      => $deliveryCommissionAmount,
                 'settlement_status'               => $settlementStatus,
+                // Currency Snapshot
+                'currency_code'                   => $currencyConfig['code'] ?? 'INR',
+                'currency_symbol'                 => $currencyConfig['symbol'] ?? '₹',
+                'currency_symbol_position'        => $currencyConfig['symbol_position'] ?? 'before',
+                'currency_decimal_places'         => (int) ($currencyConfig['decimal_places'] ?? 2),
             ];
 
             if ($request->order_id) {

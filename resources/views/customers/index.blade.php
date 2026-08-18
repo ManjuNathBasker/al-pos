@@ -45,7 +45,7 @@
         <div class="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex items-center justify-between">
             <div>
                 <p class="text-xs font-medium text-[#64748B] uppercase tracking-wider">Net Wallet Balance</p>
-                <h3 class="text-2xl font-bold font-mono text-[#172033] mt-1">₹{{ number_format($customers->sum('wallet_balance'), 2) }}</h3>
+                <h3 class="text-2xl font-bold font-mono text-[#172033] mt-1">@currency($customers->sum('wallet_balance'))</h3>
                 <p class="text-xs text-[#64748B] font-medium mt-0.5">Prepaid customer credits</p>
             </div>
             <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
@@ -138,17 +138,17 @@
                             @if($customer->wallet_balance > 0)
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold font-mono bg-emerald-50 text-[#29AB6C] border border-emerald-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-[#29AB6C]"></span>
-                                    ₹{{ number_format($customer->wallet_balance, 2) }}
+                                    @currency($customer->wallet_balance)
                                 </span>
                             @elseif($customer->wallet_balance < 0)
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold font-mono bg-red-50 text-[#FF4848] border border-red-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-[#FF4848]"></span>
-                                    -₹{{ number_format(abs($customer->wallet_balance), 2) }}
+                                    @currency($customer->wallet_balance)
                                 </span>
                             @else
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold font-mono bg-slate-100 text-[#64748B] border border-slate-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                                    ₹0.00
+                                    @currency(0)
                                 </span>
                             @endif
                         </td>
