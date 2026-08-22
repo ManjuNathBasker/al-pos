@@ -33,7 +33,20 @@
                         @endif
                         {{ $ticket->order->table->name ?? ($ticket->order->service_type === 'takeaway' ? 'TAKEAWAY' : ($ticket->order->service_type === 'delivery' ? 'DELIVERY' : 'WALK-IN')) }}
                     </h3>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ $ticket->ticket_number }}</span>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ $ticket->ticket_number }}</span>
+                        @if($ticket->order)
+                            @if($ticket->order->status === 'paid' || $ticket->order->payment_status === 'paid')
+                                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-full border border-emerald-300 inline-flex items-center gap-1" title="Payment Completed">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> PAID
+                                </span>
+                            @else
+                                <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-black rounded-full border border-amber-300 inline-flex items-center gap-1" title="Payment Pending">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> UNPAID
+                                </span>
+                            @endif
+                        @endif
+                    </div>
                     @if($ticket->order->service_type === 'delivery' && $ticket->order->billing_address)
                         <p class="mt-1 text-[10px] font-black text-rose-500 uppercase leading-tight max-w-[150px]">
                             📍 {{ Str::limit($ticket->order->billing_address, 40) }}
@@ -85,7 +98,26 @@
             </div>
 
             <!-- Ticket Footer / Actions -->
-            <div class="p-4 bg-slate-50 border-t border-slate-100">
+            <div class="p-4 bg-slate-50 border-t border-slate-100 space-y-2">
+                @php
+                    $kotPayload = [
+                        'service_type' => $ticket->order->service_type ?? 'retail',
+                        'kot_id' => $ticket->ticket_number,
+                        'order_number' => $ticket->order->order_number ?? ('#ORD-' . $ticket->order_id),
+                        'table_name' => $ticket->order->table->name ?? ($ticket->order->service_type === 'takeaway' ? 'TAKEAWAY' : ($ticket->order->service_type === 'delivery' ? 'DELIVERY' : 'COUNTER')),
+                        'time' => $ticket->created_at->format('h:i A'),
+                        'items' => $ticket->items->map(function($i) {
+                            return ['name' => $i->product_name, 'qty' => $i->quantity, 'note' => $i->note];
+                        })->values()->toArray(),
+                    ];
+                @endphp
+                <button type="button" 
+                    onclick='printKOTSlip(@json($kotPayload))'
+                    class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-xs rounded-xl border border-indigo-200 transition-colors flex items-center justify-center gap-1.5 shadow-sm active:scale-95">
+                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    <span>PRINT KOT SLIP</span>
+                </button>
+
                 <form action="{{ route('kitchen.tickets.status', $ticket) }}" method="POST">
                     @csrf
                     @method('PATCH')
@@ -133,6 +165,79 @@
     }
 </style>
 <script>
+    function printKOTSlip(data) {
+        const win = window.open('', '_blank', 'width=400,height=600');
+        const itemsHtml = (data.items || []).map(item => `
+            <tr style="border-bottom: 1px dashed #ccc;">
+                <td style="padding: 4px 0; font-size: 14px; font-weight: bold; width: 40px; vertical-align: top;">${item.qty || item.quantity}x</td>
+                <td style="padding: 4px 0; font-size: 13px; font-weight: bold; vertical-align: top;">
+                    ${item.name || item.product_name}
+                    ${item.note ? `<div style="font-size: 11px; font-weight: normal; color: #333; font-style: italic;">Note: ${item.note}</div>` : ''}
+                </td>
+            </tr>
+        `).join('');
+
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>KOT Print Slip</title>
+    <style>
+        body { margin: 0; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; background: #fff; color: #000; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 4px 2px; }
+        .kot-container { width: 100%; max-width: 300px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div class="kot-container">
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: bold; text-transform: uppercase;">*** KITCHEN TICKET (KOT) ***</h2>
+            <div style="font-size: 14px; font-weight: bold; margin-top: 4px; background: #000; color: #fff; padding: 3px 8px; display: inline-block; border-radius: 4px;">
+                SERVICE: ${(data.service_type || 'COUNTER').toUpperCase().replace('_', ' ')}
+            </div>
+        </div>
+
+        <table style="width: 100%; font-size: 11px; margin-bottom: 8px; border-bottom: 1px dashed #000; padding-bottom: 6px;">
+            <tr>
+                <td><strong>KOT ID:</strong> ${data.kot_id || 'KOT-' + (data.order_id || '')}</td>
+                <td style="text-align: right;"><strong>ORDER #:</strong> ${data.order_number || ('#ORD-' + (data.order_id || ''))}</td>
+            </tr>
+            <tr>
+                <td><strong>TABLE:</strong> ${data.table_name || 'N/A'}</td>
+                <td style="text-align: right;"><strong>TIME:</strong> ${data.time || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+            </tr>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+            <thead>
+                <tr style="border-bottom: 1px solid #000;">
+                    <th style="text-align: left; padding: 4px 0; font-size: 11px;">QTY</th>
+                    <th style="text-align: left; padding: 4px 0; font-size: 11px;">ITEM</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsHtml}
+            </tbody>
+        </table>
+
+        <div style="text-align: center; border-top: 2px solid #000; padding-top: 8px; font-size: 10px; font-weight: bold;">
+            *** END OF KOT SLIP ***
+        </div>
+    </div>
+    <script>
+        window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+        };
+    <\/script>
+</body>
+</html>`;
+
+        win.document.write(html);
+        win.document.close();
+    }
+
     // Auto refresh every 20 seconds to keep KDS up to date
     setInterval(() => {
         window.location.reload();

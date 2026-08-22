@@ -33,6 +33,7 @@ class RestaurantTable extends Model
     public function activeOrder()
     {
         return $this->hasOne(Order::class, 'table_id')
-            ->whereIn('status', ['pending', 'processing']);
+            ->whereNotIn('status', ['closed', 'completed', 'cancelled'])
+            ->latestOfMany();
     }
 }

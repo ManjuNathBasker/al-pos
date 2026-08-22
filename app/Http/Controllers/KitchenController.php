@@ -10,10 +10,15 @@ class KitchenController extends Controller
 {
     public function index()
     {
-        $tickets = KitchenTicket::with('items', 'order.table')
-            ->whereIn('status', ['pending', 'preparing', 'ready'])
-            ->orderBy('created_at', 'asc')
-            ->get();
+        $companyId = session('company_id');
+        $query = KitchenTicket::with(['items', 'order.table', 'order.customer'])
+            ->whereIn('status', ['pending', 'preparing', 'ready']);
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $tickets = $query->orderBy('created_at', 'asc')->get();
 
         return view('restaurant.kitchen.index', compact('tickets'));
     }

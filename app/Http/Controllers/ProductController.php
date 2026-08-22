@@ -53,7 +53,7 @@ class ProductController extends Controller
             'allow_backorder' => 'boolean',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
-            'image' => 'nullable|image|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048'
         ]);
 
         // Default booleans
@@ -98,7 +98,7 @@ class ProductController extends Controller
             'allow_backorder' => 'boolean',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
-            'image' => 'nullable|image|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048'
         ]);
 
         // Default booleans

@@ -151,14 +151,27 @@
 
             <div class="pt-2">
                 <label for="image" class="block text-xs font-semibold text-[#172033]">Product Image</label>
+                <p class="text-[11px] text-[#64748B] mt-0.5 mb-1.5">
+                    <strong>Recommended size:</strong> 500 × 500 px (Square aspect ratio, max 2MB. Formats: JPG, PNG, WEBP).
+                </p>
                 @if($product->image)
                     <div class="mt-2 mb-3 flex items-center gap-3">
-                        <img src="{{ asset('storage/' . $product->image) }}" alt="" class="w-16 h-16 object-cover rounded-lg border border-[#E5E7EB]">
+                        <img src="{{ asset('storage/' . $product->image) }}" alt="" class="w-16 h-16 object-contain rounded-lg border border-[#E5E7EB] bg-slate-50">
                         <span class="text-xs text-[#64748B]">Current photo uploaded</span>
                     </div>
                 @endif
-                <input type="file" name="image" id="image" accept="image/*" 
+                <input type="file" name="image" id="image" accept="image/jpeg,image/png,image/webp,image/gif" onchange="validateAndPreviewImage(this)"
                        class="mt-1.5 block w-full text-xs text-[#64748B] file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-[#F5703E] hover:file:bg-orange-100 border border-[#E5E7EB] rounded-lg p-2 bg-white">
+                <p id="image-error" class="mt-1 text-xs text-[#FF4848] hidden"></p>
+                
+                {{-- Live Image Preview Container --}}
+                <div id="image-preview-container" class="mt-3 hidden items-center gap-3 p-2 bg-slate-50 border border-[#E5E7EB] rounded-lg">
+                    <img id="image-preview" src="#" alt="Preview" class="w-16 h-16 object-contain rounded-md bg-white border border-[#E5E7EB]">
+                    <div>
+                        <p id="image-file-info" class="text-xs font-medium text-[#172033]"></p>
+                        <span class="text-[10px] text-emerald-600 font-semibold">New image selected</span>
+                    </div>
+                </div>
                 @error('image')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
             </div>
         </div>
@@ -177,4 +190,53 @@
     </form>
 
 </div>
+
+<script>
+function validateAndPreviewImage(input) {
+    const file = input.files[0];
+    const errorEl = document.getElementById('image-error');
+    const previewContainer = document.getElementById('image-preview-container');
+    const previewImg = document.getElementById('image-preview');
+    const fileInfo = document.getElementById('image-file-info');
+
+    if (errorEl) { errorEl.classList.add('hidden'); errorEl.innerText = ''; }
+    
+    if (!file) {
+        if (previewContainer) previewContainer.classList.add('hidden');
+        return;
+    }
+
+    if (file.size > 2097152) {
+        if (errorEl) {
+            errorEl.innerText = 'File size exceeds 2MB limit (' + (file.size / (1024 * 1024)).toFixed(2) + ' MB). Please choose a smaller image.';
+            errorEl.classList.remove('hidden');
+        }
+        input.value = '';
+        if (previewContainer) previewContainer.classList.add('hidden');
+        return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+        if (errorEl) {
+            errorEl.innerText = 'Invalid file type. Only JPG, PNG, WEBP, and GIF images are allowed.';
+            errorEl.classList.remove('hidden');
+        }
+        input.value = '';
+        if (previewContainer) previewContainer.classList.add('hidden');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        if (previewImg) previewImg.src = e.target.result;
+        if (fileInfo) fileInfo.innerText = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+        if (previewContainer) {
+            previewContainer.classList.remove('hidden');
+            previewContainer.classList.add('flex');
+        }
+    };
+    reader.readAsDataURL(file);
+}
+</script>
 @endsection

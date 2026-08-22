@@ -240,13 +240,19 @@
             overflow: hidden;
             width: 100%;
             height: 140px;
-            background: linear-gradient(135deg, #F9FAFB 0%, #EEF0F3 100%);
+            background: #FAFAFA;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
         }
         .card-img-wrap img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.4s ease;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            transition: transform 0.3s ease;
         }
         .restaurant-card:hover .card-img-wrap img {
             transform: scale(1.06);
@@ -628,45 +634,90 @@
      x-transition @click.self="showBillModal=false">
     <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full mx-4 max-h-[92vh] overflow-hidden flex flex-col border border-gray-100">
         <div class="flex-1 overflow-y-auto thin-scroll p-6">
-            <div id="receipt-container" class="receipt-container bg-white">
+            <div id="receipt-container" class="receipt-container bg-white p-2">
                 <div style="text-align:center;margin-bottom:12px;">
                     <h2 style="margin:0;font-size:16px;text-transform:uppercase;font-weight:bold;">{{ config('app.name') }}</h2>
                     <p style="margin:2px 0;font-size:11px;">123 Supermarket St, Retail City</p>
                     <p style="margin:2px 0;font-size:11px;">Tel: +1 234 567 890</p>
-                    <div style="margin:8px 0;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:4px 0;font-weight:bold;">
-                        RECEIPT: #<span x-text="lastOrderId"></span>
+                    <div style="margin:8px 0;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:6px 0;text-align:center;">
+                        <div style="font-size:15px;font-weight:bold;letter-spacing:0.5px;">TAX INVOICE / RECEIPT</div>
+                        <div style="font-size:13px;font-weight:bold;margin-top:2px;" x-text="'ORDER #: ' + (lastOrderNumber || ('#ORD-' + String(lastOrderId || '').padStart(5, '0')))"></div>
+                        <template x-if="lastOrderKotNumber">
+                            <div style="font-size:11px;color:#333;margin-top:2px;" x-text="'KOT REF: ' + lastOrderKotNumber"></div>
+                        </template>
+                        <div style="font-size:12px;font-weight:bold;text-transform:uppercase;margin-top:4px;background:#f3f4f6;padding:3px 6px;display:inline-block;border-radius:4px;">
+                            SERVICE MODE: <span x-text="formatServiceMode(lastOrderServiceType || serviceType)"></span>
+                            <template x-if="lastOrderTableName"><span x-text="' (' + lastOrderTableName + ')'"></span></template>
+                        </div>
                     </div>
                 </div>
-                <div style="margin-bottom:10px;font-size:11px;">
-                    <p style="margin:0;" x-text="'Date: '+new Date().toLocaleString('en-US')"></p>
-                    <p style="margin:0;">Cashier: {{ auth()->user()->name ?? 'Admin' }}</p>
-                    <template x-if="lastOrderCustomer.name"><p style="margin:0;" x-text="'Customer: '+lastOrderCustomer.name"></p></template>
+                <div style="margin-bottom:10px;font-size:11px;line-height:1.4;">
+                    <div style="display:flex;justify-content:space-between;">
+                        <span><strong>Date & Time:</strong></span>
+                        <span x-text="new Date().toLocaleString('en-US')"></span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span><strong>Cashier:</strong></span>
+                        <span>{{ auth()->user()->name ?? 'Admin' }}</span>
+                    </div>
+                    <template x-if="lastOrderCustomer && lastOrderCustomer.name">
+                        <div style="display:flex;justify-content:space-between;">
+                            <span><strong>Customer:</strong></span>
+                            <span x-text="lastOrderCustomer.name + (lastOrderCustomer.phone ? ' (' + lastOrderCustomer.phone + ')' : '')"></span>
+                        </div>
+                    </template>
+                    <template x-if="lastOrderTableName">
+                        <div style="display:flex;justify-content:space-between;">
+                            <span><strong>Table / Seating:</strong></span>
+                            <span x-text="lastOrderTableName"></span>
+                        </div>
+                    </template>
+                    <template x-if="(lastOrderServiceType==='delivery' || serviceType==='delivery') && customer.address">
+                        <div style="display:flex;justify-content:space-between;">
+                            <span><strong>Delivery Address:</strong></span>
+                            <span x-text="customer.address"></span>
+                        </div>
+                    </template>
                 </div>
                 <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px;">
-                    <thead><tr style="border-bottom:1px dashed #000;"><th style="text-align:left;padding:4px 0;">Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th></tr></thead>
+                    <thead>
+                        <tr style="border-bottom:1px solid #000;">
+                            <th style="text-align:left;padding:4px 0;">Item</th>
+                            <th style="text-align:center;padding:4px 0;">Qty</th>
+                            <th style="text-align:right;padding:4px 0;">Price</th>
+                            <th style="text-align:right;padding:4px 0;">Subtotal</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <template x-for="item in lastOrderItems" :key="item.id">
-                            <tr>
-                                <td style="padding:4px 0;"><span x-text="item.name"></span><br><small x-text="'SKU: '+(item.sku||'N/A')" style="font-size:9px;color:#555;"></small></td>
-                                <td style="text-align:center;" x-text="item.qty"></td>
-                                <td style="text-align:right;" x-text="formatCurrency(item.price*item.qty)"></td>
+                            <tr style="border-bottom:1px dashed #eee;">
+                                <td style="padding:4px 0;">
+                                    <span x-text="item.name"></span>
+                                    <template x-if="item.sku"><br><small x-text="'SKU: ' + item.sku" style="font-size:9px;color:#555;"></small></template>
+                                </td>
+                                <td style="text-align:center;padding:4px 0;" x-text="item.qty"></td>
+                                <td style="text-align:right;padding:4px 0;" x-text="formatCurrency(item.price)"></td>
+                                <td style="text-align:right;padding:4px 0;" x-text="formatCurrency(item.price*item.qty)"></td>
                             </tr>
                         </template>
                     </tbody>
                 </table>
                 <div style="border-top:1px dashed #000;padding-top:6px;font-size:11px;">
-                    <div style="display:flex;justify-content:space-between;"><span>Subtotal:</span><span x-text="formatCurrency(lastOrderSubtotal)"></span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span>Subtotal:</span><span x-text="formatCurrency(lastOrderSubtotal)"></span></div>
                     <template x-if="lastOrderDiscount>0">
-                        <div style="display:flex;justify-content:space-between;"><span x-text="'Discount ('+(lastOrderDiscountPercent||0)+'%):'" ></span><span x-text="'-' + formatCurrency(lastOrderDiscount)"></span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span x-text="'Discount ('+(lastOrderDiscountPercent||0)+'%):'"></span><span x-text="'-' + formatCurrency(lastOrderDiscount)"></span></div>
                     </template>
-                    <div style="display:flex;justify-content:space-between;"><span>Tax (8%):</span><span x-text="formatCurrency(lastOrderTax)"></span></div>
-                    <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin-top:6px;border-top:1px dashed #000;padding-top:6px;">
-                        <span>TOTAL:</span><span x-text="formatCurrency(lastOrderTotal)"></span>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span>Tax (8%):</span><span x-text="formatCurrency(lastOrderTax)"></span></div>
+                    <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin-top:6px;border-top:1px solid #000;padding-top:6px;">
+                        <span>TOTAL AMOUNT:</span><span x-text="formatCurrency(lastOrderTotal)"></span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:bold;margin-top:4px;color:#059669;">
+                        <span>PAYMENT STATUS:</span><span>PAID</span>
                     </div>
                 </div>
                 <div style="text-align:center;margin-top:16px;font-size:10px;border-top:1px dashed #000;padding-top:10px;">
                     <p style="margin:0;font-weight:bold;">THANK YOU FOR YOUR VISIT!</p>
-                    <p style="margin:4px 0 0;">Please keep this receipt for returns.</p>
+                    <p style="margin:4px 0 0;">Please keep this receipt for your records.</p>
                 </div>
             </div>
         </div>
@@ -777,6 +828,42 @@
 
         {{-- Categories Sidebar --}}
         <nav class="flex-1 overflow-y-auto thin-scroll px-3 py-3 space-y-1">
+            {{-- Quick Access Section --}}
+            <div class="mb-3 border-b border-gray-100 pb-2">
+                <div class="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 px-1">Quick Access</div>
+                <div class="space-y-1">
+                    <button @click="selectQuickAccess('favorites')"
+                        :class="activeQuickAccess==='favorites' ? 'active' : ''"
+                        class="sidebar-cat-btn">
+                        <span class="cat-icon-box">
+                            <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                            </svg>
+                        </span>
+                        <span class="flex-1 truncate">Favorites</span>
+                        <span class="cat-badge text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                            :class="activeQuickAccess==='favorites' ? 'bg-white/30 text-white' : 'bg-orange-100 text-orange-700 font-extrabold'">
+                            <span x-text="favoritesCount"></span>
+                        </span>
+                    </button>
+
+                    <button @click="selectQuickAccess('active_orders')"
+                        :class="activeQuickAccess==='active_orders' ? 'active' : ''"
+                        class="sidebar-cat-btn">
+                        <span class="cat-icon-box">
+                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </span>
+                        <span class="flex-1 truncate">Active Orders</span>
+                        <span class="cat-badge text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                            :class="activeQuickAccess==='active_orders' ? 'bg-white/30 text-white' : 'bg-red-100 text-red-700 font-extrabold'">
+                            <span x-text="activeOrdersList.length"></span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
             <div class="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider mb-2 px-1">Menu Categories</div>
 
             <button @click="filterCategory('all')" :class="activeCategory==='all' ? 'active' : ''" class="sidebar-cat-btn">
@@ -871,6 +958,16 @@
                             x-text="c"></button>
                     </template>
                 </div>
+
+                {{-- Reset Button --}}
+                <button @click="resetFilters()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200 text-red-600 bg-red-50/60 hover:bg-red-100 font-extrabold text-xs transition-all shadow-sm active:scale-95 ml-1"
+                    title="Reset All Filters">
+                    <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span>RESET</span>
+                </button>
             </div>
         </div>
 
@@ -908,7 +1005,17 @@
 
                         {{-- Food Image Area --}}
                         <div class="card-img-wrap">
-                            <img x-show="product.image" :src="'storage/'+product.image" :alt="product.name" loading="lazy" />
+                            {{-- Favorite Marking Heart Icon --}}
+                            <button type="button" @click.stop="toggleFavorite(product.id)"
+                                class="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-red-500 shadow-sm transition-all hover:scale-110"
+                                :class="isFavorite(product.id) ? 'text-red-500 bg-white shadow-red-500/20' : ''"
+                                :title="isFavorite(product.id) ? 'Remove from Favorites' : 'Add to Favorites'">
+                                <svg class="w-4 h-4" :fill="isFavorite(product.id) ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                </svg>
+                            </button>
+
+                            <img x-show="product.image" :src="getImageUrl(product.image)" :alt="product.name" loading="lazy" onerror="this.style.display='none';" />
                             <div x-show="!product.image" class="w-full h-full flex flex-col items-center justify-center text-gray-300 bg-gray-100">
                                 <svg class="w-10 h-10 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">No Image</span>
@@ -955,8 +1062,8 @@
                         :class="isInCart(product.id) ? 'restaurant-list-card pcard in-cart' : 'restaurant-list-card pcard'">
 
                         {{-- Food Thumbnail (56x56) --}}
-                        <div class="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 relative border border-gray-100">
-                            <img x-show="product.image" :src="'storage/'+product.image" :alt="product.name" class="w-full h-full object-cover" />
+                        <div class="w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0 relative border border-gray-100 flex items-center justify-center p-1">
+                            <img x-show="product.image" :src="getImageUrl(product.image)" :alt="product.name" class="w-full h-full object-contain" onerror="this.style.display='none';" />
                             <div x-show="!product.image" class="w-full h-full flex flex-col items-center justify-center text-gray-300 bg-gray-100">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             </div>
@@ -993,6 +1100,93 @@
 
                     </div>
                 </template>
+            </div>
+        </div>
+
+        {{-- ── LIVE ACTIVE ORDERS BOTTOM PANEL ── --}}
+        <div id="active-orders-panel" x-show="showActiveOrdersPanel" x-cloak
+             class="border-t-2 border-red-400 bg-white p-3.5 shadow-lg flex-shrink-0 z-10 transition-all">
+            <div class="flex items-center justify-between mb-2.5">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                    <h3 class="text-xs font-black text-gray-900 tracking-tight flex items-center gap-2 uppercase">
+                        LIVE ACTIVE ORDERS
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500 text-white tabular" x-text="activeOrdersList.length"></span>
+                    </h3>
+                    <span class="text-[10px] font-semibold text-gray-400 border-l border-gray-200 pl-2.5 hidden sm:inline">Sorted by duration (High to Low)</span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('orders.index') }}" class="text-xs font-extrabold text-brand-600 hover:text-brand-700 flex items-center gap-1">
+                        View All Orders
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                    <button @click="selectQuickAccess('active_orders')" type="button"
+                        class="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition-all text-xs font-bold"
+                        title="Close Active Orders Panel">
+                        ×
+                    </button>
+                </div>
+            </div>
+
+            {{-- Active Orders Carousel / Cards --}}
+            <div class="flex items-center gap-2.5 overflow-x-auto thin-scroll pb-1">
+                <template x-for="ord in activeOrdersList" :key="ord.id">
+                    <div @click="loadActiveOrder(ord)"
+                         class="flex-shrink-0 w-40 bg-white border-2 border-gray-100 hover:border-brand-500 rounded-2xl p-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-black text-gray-900 truncate group-hover:text-brand-600" x-text="ord.order_number"></span>
+                            <span class="text-[8px] font-extrabold px-1.5 py-0.5 rounded-md"
+                                :class="{
+                                    'bg-purple-100 text-purple-700': ord.service_type==='dine_in',
+                                    'bg-blue-100 text-blue-700': ord.service_type==='retail'||ord.service_type==='counter',
+                                    'bg-emerald-100 text-emerald-700': ord.service_type==='takeaway',
+                                    'bg-amber-100 text-amber-700': ord.service_type==='delivery'
+                                }"
+                                x-text="ord.service_type_label"></span>
+                        </div>
+                        <div class="flex items-center justify-between text-[9px] text-gray-400 mb-1.5">
+                            <div class="flex items-center gap-1">
+                                <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span x-text="ord.time"></span>
+                            </div>
+                            <span class="text-[8px] font-black px-1.5 py-0.5 rounded"
+                                :class="ord.payment_status==='paid' ? 'bg-emerald-100 text-emerald-700' : (ord.payment_status==='partial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')"
+                                x-text="ord.payment_status_label"></span>
+                        </div>
+                        <div class="text-lg font-black text-gray-900 leading-tight mb-2 tabular" x-text="ord.duration"></div>
+
+                        <div class="flex items-center justify-between pt-1 border-t border-gray-100">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full"
+                                    :class="{
+                                        'bg-red-500': ord.status==='preparing',
+                                        'bg-amber-500': ord.status==='pending',
+                                        'bg-emerald-500': ord.status==='ready'
+                                    }"></span>
+                                <span class="text-[9px] font-bold text-gray-700 capitalize" x-text="ord.status_label"></span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button @click.stop="printOrderKOT(ord)" type="button" class="p-1 text-indigo-600 hover:bg-indigo-50 rounded" title="Print KOT Slip">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                </button>
+                                <span class="text-[9px] font-extrabold text-brand-600 group-hover:underline">Load &rarr;</span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="activeOrdersList.length===0">
+                    <div class="w-full py-3 text-center text-xs font-semibold text-gray-400">
+                        No active orders right now
+                    </div>
+                </template>
+            </div>
+
+            {{-- Footer Auto Refresh Info --}}
+            <div class="flex items-center justify-center gap-1.5 mt-2 text-[9px] font-semibold text-gray-400">
+                <svg class="w-3 h-3 text-emerald-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Auto refresh every 5 seconds</span>
             </div>
         </div>
     </main>
@@ -1397,6 +1591,39 @@ function posApp() {
         showBillModal: false,
         showTablesModal: false,
         activeTablesList: [],
+        favorites: JSON.parse(localStorage.getItem('pos_favorites') || '[]'),
+        activeQuickAccess: null,
+        showActiveOrdersPanel: false,
+
+        selectQuickAccess(type) {
+            if (type === 'active_orders') {
+                this.showActiveOrdersPanel = !this.showActiveOrdersPanel;
+                if (this.showActiveOrdersPanel) {
+                    this.activeQuickAccess = 'active_orders';
+                    this.fetchActiveOrders();
+                } else {
+                    if (this.activeQuickAccess === 'active_orders') {
+                        this.activeQuickAccess = null;
+                    }
+                }
+                this.applyFilters();
+                return;
+            }
+
+            if (this.activeQuickAccess === type) {
+                this.activeQuickAccess = null;
+                this.setActiveCategoryName();
+                this.applyFilters();
+                return;
+            }
+            this.activeQuickAccess = type;
+            if (type === 'favorites') {
+                this.activeCategory = 'all';
+                this.setActiveCategoryName();
+            }
+            this.applyFilters();
+        },
+        activeOrdersList: [],
         loadedOrderId: null,
         loadedTableName: '',
         loadedOrderTotal: 0,
@@ -1478,6 +1705,9 @@ function posApp() {
         appliedCoupon: null,
         orderNote: '',
         lastOrderId: '',
+        lastOrderNumber: '',
+        lastOrderKotNumber: '',
+        lastOrderTableName: '',
         lastOrderTotal: 0,
         lastOrderItems: [],
         lastOrderCustomer: { name: '', phone: '' },
@@ -1485,6 +1715,9 @@ function posApp() {
         lastOrderDiscount: 0,
         lastOrderDiscountPercent: 0,
         lastOrderTax: 0,
+        lastOrderServiceType: 'counter',
+        loadedOrderPaymentStatus: null,
+        loadedOrderStatus: null,
         discountPercent: 0,
         currentTime: '',
         toasts: [],
@@ -1577,11 +1810,144 @@ function posApp() {
 
         recalcTotal() { /* triggers Alpine computed re-evaluation */ },
 
+        get favoriteProducts() {
+            if (!Array.isArray(this.allProducts)) return [];
+            return this.allProducts.filter(p => this.favorites.includes(Number(p.id)) || this.favorites.includes(String(p.id)));
+        },
+
+        get favoritesCount() {
+            return this.favoriteProducts.length;
+        },
+
+        cleanOrphanFavorites() {
+            if (!Array.isArray(this.allProducts)) return;
+            const validIds = this.allProducts.map(p => Number(p.id));
+            this.favorites = (this.favorites || []).map(f => Number(f)).filter(fId => validIds.includes(fId));
+            localStorage.setItem('pos_favorites', JSON.stringify(this.favorites));
+        },
+
+        getImageUrl(path) {
+            if (!path) return '';
+            if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+            let cleanPath = path.replace(/^\/?(storage\/)?/, '');
+            return '/storage/' + cleanPath;
+        },
+
+        isFavorite(productId) {
+            return this.favorites.includes(Number(productId)) || this.favorites.includes(String(productId));
+        },
+
+        toggleFavorite(productId) {
+            const id = Number(productId);
+            if (this.isFavorite(id)) {
+                this.favorites = this.favorites.filter(fId => Number(fId) !== id);
+                this.showToast('Removed from favorites');
+            } else {
+                this.favorites.push(id);
+                this.showToast('Added to favorites');
+            }
+            localStorage.setItem('pos_favorites', JSON.stringify(this.favorites));
+            if (this.activeQuickAccess === 'favorites') {
+                this.setActiveCategoryName();
+                this.applyFilters();
+            }
+        },
+
+
+        formatServiceMode(type) {
+            if (!type) return 'Counter';
+            const t = String(type).toLowerCase().replace(/_/g, '-');
+            if (t === 'dine-in') return 'Dine In';
+            if (t === 'takeaway' || t === 'pickup') return 'Pickup';
+            if (t === 'delivery') return 'Delivery';
+            return 'Counter';
+        },
+
+        resetFilters() {
+            this.cart = {};
+            this.loadedOrderId = null;
+            this.loadedOrderPaymentStatus = null;
+            this.loadedOrderStatus = null;
+            this.loadedTableName = '';
+            this.loadedOrderTotal = 0;
+            this.customer = { name: '', phone: '', address: '' };
+            this.discountValue = 0;
+            this.discountType = 'percent';
+            this.appliedCoupon = null;
+            this.couponCode = '';
+            this.orderNote = '';
+            this.useWallet = false;
+            this.walletAmount = 0;
+            this.searchQuery = '';
+            this.activeCategory = 'all';
+            this.activeQuickAccess = null;
+            this.serviceType = 'retail';
+            this.gridView = true;
+            this.gridCols = 4;
+            this.syncToBackend('clear', {});
+            this.setActiveCategoryName();
+            this.applyFilters();
+            this.showToast('POS reset to default');
+        },
+
+        async loadActiveOrder(ord) {
+            const orderId = ord.id;
+            try {
+                const res = await fetch('{{ route("pos.load-order") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.cart = data.cart;
+                    this.loadedOrderId = data.order.id;
+                    this.lastOrderId = data.order.id;
+                    this.lastOrderNumber = data.order.order_number || ord.order_number || ('#ORD-' + String(data.order.id).padStart(5, '0'));
+                    this.lastOrderKotNumber = data.order.kot_number || ('KOT-' + data.order.id);
+                    this.lastOrderServiceType = data.order.service_type || ord.service_type || 'dine_in';
+                    this.lastOrderTableName = data.order.table ? data.order.table.name : (ord.service_type === 'dine_in' ? 'Dine In' : '');
+                    this.loadedOrderPaymentStatus = data.order.payment_status || ord.payment_status;
+                    this.loadedOrderStatus = data.order.status || ord.status;
+                    this.loadedTableName = this.lastOrderTableName;
+                    this.loadedOrderTotal = data.order.total_amount;
+                    this.serviceType = this.lastOrderServiceType;
+                    this.customer.name = data.order.customer ? data.order.customer.name : (data.order.customer_name || '');
+                    this.customer.phone = data.order.customer ? data.order.customer.phone : (data.order.customer_phone || '');
+                    this.customer.address = data.order.customer ? (data.order.customer.address || '') : (data.order.billing_address || '');
+                    this.discountValue = data.order.discount_value || 0;
+                    this.discountType = data.order.discount_type || 'percent';
+                    this.orderNote = data.order.note || '';
+                    this.showToast('Loaded Order ' + (ord.order_number || ('#' + ord.id)));
+                    if (this.customer.phone) this.fetchCustomer();
+                } else {
+                    this.showToast(data.message || 'Failed to load order', 'error');
+                }
+            } catch(e) { this.showToast('Failed to load order', 'error'); }
+        },
+
+        async fetchActiveOrders() {
+            try {
+                const res = await fetch('{{ route("pos.active-orders") }}');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.orders)) {
+                    this.activeOrdersList = data.orders;
+                }
+            } catch(e) { console.error('Failed to fetch active orders', e); }
+        },
+
         async init() {
             this.filteredProducts = Array.isArray(this.allProducts) ? [...this.allProducts] : [];
+            this.cleanOrphanFavorites();
             this.setActiveCategoryName();
             this.startClock();
             await this.fetchCards();
+            await this.fetchActiveOrders();
+            setInterval(() => { this.fetchActiveOrders(); }, 5000);
         },
 
         async fetchCards() {
@@ -1632,6 +1998,7 @@ function posApp() {
         },
 
         filterCategory(categoryId) {
+            this.activeQuickAccess = null;
             this.activeCategory = String(categoryId);
             this.searchQuery = '';
             this.setActiveCategoryName();
@@ -1639,14 +2006,22 @@ function posApp() {
         },
 
         setActiveCategoryName() {
-            this.activeCategoryName = this.activeCategory==='all' ? 'All Items' : (this.categoryMap[this.activeCategory]||'Unknown');
+            if (this.activeQuickAccess === 'favorites') {
+                this.activeCategoryName = 'Favorites (' + this.favoritesCount + ')';
+            } else {
+                this.activeCategoryName = this.activeCategory==='all' ? 'All Items' : (this.categoryMap[this.activeCategory]||'Unknown');
+            }
         },
 
         filterProducts() { this.applyFilters(); },
 
         applyFilters() {
             let list = [...this.allProducts];
-            if (this.activeCategory !== 'all') list = list.filter(p => String(p.category_id) === this.activeCategory);
+            if (this.activeQuickAccess === 'favorites') {
+                list = list.filter(p => this.favorites.includes(Number(p.id)));
+            } else if (this.activeCategory !== 'all') {
+                list = list.filter(p => String(p.category_id) === this.activeCategory);
+            }
             if (this.searchQuery.trim()) {
                 const q = this.searchQuery.toLowerCase().trim();
                 list = list.filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
@@ -1711,29 +2086,21 @@ function posApp() {
         },
 
         async loadTableOrder(table) {
-            const orderId = table.active_order.id;
-            try {
-                const res = await fetch('{{ route("pos.load-order") }}', {
-                    method:'POST',
-                    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content,'Accept':'application/json'},
-                    body:JSON.stringify({ order_id:orderId })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    this.cart = data.cart;
-                    this.loadedOrderId = data.order.id;
-                    this.loadedTableName = table.name;
-                    this.loadedOrderTotal = data.order.total_amount;
-                    this.customer.name = data.order.customer ? data.order.customer.name : '';
-                    this.customer.phone = data.order.customer ? data.order.customer.phone : '';
-                    this.discountValue = data.order.discount_value || 0;
-                    this.discountType = data.order.discount_type || 'percent';
-                    this.orderNote = data.order.note || '';
-                    this.showTablesModal = false;
-                    this.showToast('Order loaded for '+table.name);
-                    if (this.customer.phone) this.fetchCustomer();
-                }
-            } catch(e) { this.showToast('Failed to load order','error'); }
+            if (!table || !table.active_order) {
+                this.showToast('No active order for this table', 'error');
+                return;
+            }
+            const ord = {
+                id: table.active_order.id,
+                order_number: table.active_order.order_number,
+                service_type: 'dine_in',
+                service_type_label: 'Dine In',
+                table_name: table.name,
+                status: table.active_order.status,
+                payment_status: table.active_order.payment_status
+            };
+            this.showTablesModal = false;
+            await this.loadActiveOrder(ord);
         },
 
         initPayments() {
@@ -1752,6 +2119,20 @@ function posApp() {
 
         checkout() {
             if (this.cartItems.length===0) { this.showToast('Your cart is empty!','error'); return; }
+            if (this.loadedOrderPaymentStatus==='paid' || this.loadedOrderStatus==='paid') {
+                this.showToast('Order is ALREADY PAID! Showing receipt bill.');
+                this.lastOrderId = this.loadedOrderId;
+                this.lastOrderItems = [...this.cartItems];
+                this.lastOrderSubtotal = this.cartSubtotal;
+                this.lastOrderDiscount = this.discountAmount;
+                this.lastOrderDiscountPercent = this.discountValue;
+                this.lastOrderTax = this.taxAmount;
+                this.lastOrderTotal = this.grandTotal;
+                this.lastOrderCustomer = { name: this.customer.name, phone: this.customer.phone };
+                this.lastOrderServiceType = this.serviceType;
+                this.showBillModal = true;
+                return;
+            }
             if (!this.customer.name) this.customer.name = 'Walk-in Customer';
             if (!this.customer.phone) this.customer.phone = '0000000000';
             this.showBillingModal = true;
@@ -1792,9 +2173,24 @@ function posApp() {
                     })
                 });
                 const data = await res.json();
-                if (data.success) { this.lastOrderId=data.order_id; this.lastOrderTotal=data.total||snap.total; }
-                else { this.showToast(data.message||'Checkout failed','error'); this.isCheckingOut=false; return; }
-            } catch(e) { this.lastOrderId='LOCAL-'+Date.now(); this.lastOrderTotal=snap.total; }
+                if (data.success) {
+                    this.lastOrderId = data.order_id;
+                    this.lastOrderNumber = data.order_number || data.order_id;
+                    this.lastOrderKotNumber = data.kot_number || (data.order_id ? 'KOT-' + data.order_id : '');
+                    this.lastOrderServiceType = this.serviceType;
+                    this.lastOrderTableName = this.loadedTableName;
+                    this.lastOrderTotal = data.total || snap.total;
+                } else {
+                    this.showToast(data.message||'Checkout failed','error');
+                    this.isCheckingOut=false;
+                    return;
+                }
+            } catch(e) {
+                this.lastOrderId = 'LOCAL-' + Date.now();
+                this.lastOrderNumber = '#ORD-LOCAL';
+                this.lastOrderServiceType = this.serviceType;
+                this.lastOrderTotal = snap.total;
+            }
             this.lastOrderItems=snap.items; this.lastOrderCustomer=snap.customer; this.lastOrderSubtotal=snap.subtotal;
             this.lastOrderDiscount=snap.discount; this.lastOrderDiscountPercent=snap.discountPct; this.lastOrderTax=snap.tax;
             this.showBillingModal=false;
@@ -1850,12 +2246,111 @@ function posApp() {
             } catch(e) { this.showToast('Failed to validate coupon','error'); }
         },
 
+        async printOrderKOT(ord) {
+            const orderId = ord.id || (ord.active_order ? ord.active_order.id : null);
+            if (!orderId) return;
+            try {
+                const res = await fetch('{{ route("pos.load-order") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+                const data = await res.json();
+                if (data.success && data.order) {
+                    const items = (Object.values(data.cart) || []).map(i => ({ name: i.name, qty: i.qty, note: i.note }));
+                    printKOTSlip({
+                        service_type: data.order.service_type || ord.service_type || 'counter',
+                        kot_id: 'KOT-' + data.order.id,
+                        order_number: data.order.order_number || ord.order_number || ('#ORD-' + data.order.id),
+                        table_name: data.order.table ? data.order.table.name : (ord.name || ord.service_type_label || 'COUNTER'),
+                        time: ord.time || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                        items: items
+                    });
+                } else {
+                    this.showToast(data.message || 'Failed to fetch KOT data', 'error');
+                }
+            } catch(e) { this.showToast('Failed to fetch KOT data', 'error'); }
+        },
+
         showToast(message, type='success') {
             const id = ++this.toastCounter;
             this.toasts.push({id,message,type});
             setTimeout(()=>{ this.toasts=this.toasts.filter(t=>t.id!==id); },3000);
         },
     };
+}
+
+function printKOTSlip(data) {
+    const win = window.open('', '_blank', 'width=400,height=600');
+    const itemsHtml = (data.items || []).map(item => `
+        <tr style="border-bottom: 1px dashed #ccc;">
+            <td style="padding: 4px 0; font-size: 14px; font-weight: bold; width: 40px; vertical-align: top;">${item.qty || item.quantity}x</td>
+            <td style="padding: 4px 0; font-size: 13px; font-weight: bold; vertical-align: top;">
+                ${item.name || item.product_name}
+                ${item.note ? `<div style="font-size: 11px; font-weight: normal; color: #333; font-style: italic;">Note: ${item.note}</div>` : ''}
+            </td>
+        </tr>
+    `).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>KOT Print Slip</title>
+    <style>
+        body { margin: 0; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; background: #fff; color: #000; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 4px 2px; }
+        .kot-container { width: 100%; max-width: 300px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div class="kot-container">
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: bold; text-transform: uppercase;">*** KITCHEN TICKET (KOT) ***</h2>
+            <div style="font-size: 14px; font-weight: bold; margin-top: 4px; background: #000; color: #fff; padding: 3px 8px; display: inline-block; border-radius: 4px;">
+                SERVICE: ${(data.service_type || 'COUNTER').toUpperCase().replace('_', ' ')}
+            </div>
+        </div>
+
+        <table style="width: 100%; font-size: 11px; margin-bottom: 8px; border-bottom: 1px dashed #000; padding-bottom: 6px;">
+            <tr>
+                <td><strong>KOT ID:</strong> ${data.kot_id || 'KOT-' + (data.order_id || '')}</td>
+                <td style="text-align: right;"><strong>ORDER #:</strong> ${data.order_number || ('#ORD-' + (data.order_id || ''))}</td>
+            </tr>
+            <tr>
+                <td><strong>TABLE:</strong> ${data.table_name || 'N/A'}</td>
+                <td style="text-align: right;"><strong>TIME:</strong> ${data.time || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+            </tr>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+            <thead>
+                <tr style="border-bottom: 1px solid #000;">
+                    <th style="text-align: left; padding: 4px 0; font-size: 11px;">QTY</th>
+                    <th style="text-align: left; padding: 4px 0; font-size: 11px;">ITEM</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsHtml}
+            </tbody>
+        </table>
+
+        <div style="text-align: center; border-top: 2px solid #000; padding-top: 8px; font-size: 10px; font-weight: bold;">
+            *** END OF KOT SLIP ***
+        </div>
+    </div>
+    <script>
+        window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+        };
+    <\/script>
+</body>
+</html>`;
+
+    win.document.write(html);
+    win.document.close();
 }
 </script>
 </body>

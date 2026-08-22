@@ -320,18 +320,25 @@
                             </template>
                         </div>
 
-                        {{-- Actions: Cancel or Complete --}}
+                        {{-- Actions: Cancel or Complete or Print KOT --}}
                         <div class="pt-3 border-t border-gray-100 space-y-2">
-                            <template x-if="activeOrder.kitchen_status === 'pending'">
+                            <template x-if="activeOrder">
+                                <button @click="printActiveOrderKOT()" type="button" class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold rounded-2xl border border-indigo-200 transition-colors flex items-center justify-center gap-2 text-xs shadow-sm active:scale-95">
+                                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                    <span>Print KOT Slip</span>
+                                </button>
+                            </template>
+
+                            <template x-if="activeOrder && activeOrder.kitchen_status === 'pending'">
                                 <button @click="cancelOrder()" class="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl border border-red-200 transition-colors flex items-center justify-center gap-2 text-xs">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                     <span>Cancel Entire Order</span>
                                 </button>
                             </template>
 
-                            <template x-if="activeOrder.status === 'paid'">
+                            <template x-if="activeOrder && activeOrder.status !== 'closed'">
                                 <button @click="completeOrder()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-2 text-xs">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                     <span>Complete & Free Table</span>
                                 </button>
                             </template>
@@ -598,10 +605,100 @@
                     }
                 },
 
+                printActiveOrderKOT() {
+                    if (!this.activeOrder) return;
+                    const items = (this.activeOrder.items || []).map(i => ({
+                        name: i.product_name,
+                        qty: i.quantity,
+                        note: i.note
+                    }));
+                    printKOTSlip({
+                        service_type: this.activeOrder.service_type || 'dine_in',
+                        kot_id: 'KOT-' + this.activeOrder.id,
+                        order_number: this.activeOrder.order_number || ('#ORD-' + this.activeOrder.id),
+                        table_name: '{{ $table->name }}',
+                        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                        items: items
+                    });
+                },
+
                 init() {
                     setInterval(() => this.refreshStatus(), 10000);
                 }
-            }
+            }));
+        });
+
+        function printKOTSlip(data) {
+            const win = window.open('', '_blank', 'width=400,height=600');
+            const itemsHtml = (data.items || []).map(item => `
+                <tr style="border-bottom: 1px dashed #ccc;">
+                    <td style="padding: 4px 0; font-size: 14px; font-weight: bold; width: 40px; vertical-align: top;">${item.qty || item.quantity}x</td>
+                    <td style="padding: 4px 0; font-size: 13px; font-weight: bold; vertical-align: top;">
+                        ${item.name || item.product_name}
+                        ${item.note ? `<div style="font-size: 11px; font-weight: normal; color: #333; font-style: italic;">Note: ${item.note}</div>` : ''}
+                    </td>
+                </tr>
+            `).join('');
+
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>KOT Print Slip</title>
+    <style>
+        body { margin: 0; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; background: #fff; color: #000; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 4px 2px; }
+        .kot-container { width: 100%; max-width: 300px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div class="kot-container">
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: bold; text-transform: uppercase;">*** KITCHEN TICKET (KOT) ***</h2>
+            <div style="font-size: 14px; font-weight: bold; margin-top: 4px; background: #000; color: #fff; padding: 3px 8px; display: inline-block; border-radius: 4px;">
+                SERVICE: ${(data.service_type || 'DINE-IN').toUpperCase().replace('_', ' ')}
+            </div>
+        </div>
+
+        <table style="width: 100%; font-size: 11px; margin-bottom: 8px; border-bottom: 1px dashed #000; padding-bottom: 6px;">
+            <tr>
+                <td><strong>KOT ID:</strong> ${data.kot_id || 'KOT-' + (data.order_id || '')}</td>
+                <td style="text-align: right;"><strong>ORDER #:</strong> ${data.order_number || ('#ORD-' + (data.order_id || ''))}</td>
+            </tr>
+            <tr>
+                <td><strong>TABLE:</strong> ${data.table_name || 'N/A'}</td>
+                <td style="text-align: right;"><strong>TIME:</strong> ${data.time || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+            </tr>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+            <thead>
+                <tr style="border-bottom: 1px solid #000;">
+                    <th style="text-align: left; padding: 4px 0; font-size: 11px;">QTY</th>
+                    <th style="text-align: left; padding: 4px 0; font-size: 11px;">ITEM</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsHtml}
+            </tbody>
+        </table>
+
+        <div style="text-align: center; border-top: 2px solid #000; padding-top: 8px; font-size: 10px; font-weight: bold;">
+            *** END OF KOT SLIP ***
+        </div>
+    </div>
+    <script>
+        window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+        };
+    <\/script>
+</body>
+</html>`;
+
+            win.document.write(html);
+            win.document.close();
         }
     </script>
 </body>

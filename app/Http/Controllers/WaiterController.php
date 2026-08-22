@@ -191,45 +191,37 @@ class WaiterController extends Controller
     public function completeOrder(Request $request, RestaurantTable $table)
     {
         $order = Order::where('table_id', $table->id)
-            ->whereIn('status', ['paid']) // Make sure it's billed first
+            ->whereNotIn('status', ['closed', 'cancelled'])
             ->first();
 
         if (!$order) {
-            // Check if there is a pending order instead
-            $pendingOrder = Order::where('table_id', $table->id)
-                ->whereIn('status', ['pending', 'processing'])
-                ->first();
-                
-            if ($pendingOrder) {
-                return response()->json(['success' => false, 'message' => 'Order is not yet billed. Please bill the order at POS first.'], 422);
-            }
-            return response()->json(['success' => false, 'message' => 'No active billed order found for this table.'], 404);
-        }
-
-        // Verify KOT items are completed (served)
-        $unservedTickets = \App\Models\KitchenTicket::where('order_id', $order->id)
-            ->where('status', '!=', 'served')
-            ->count();
-            
-        $unservedItems = \App\Models\OrderItem::where('order_id', $order->id)
-            ->where('kitchen_status', '!=', 'served')
-            ->where('kitchen_status', '!=', 'none')
-            ->count();
-            
-        if ($unservedTickets > 0 || $unservedItems > 0) {
-            return response()->json(['success' => false, 'message' => 'All Kitchen Tickets must be served before closing.'], 422);
-        }
-
-        if ($order->kitchen_status !== 'served') {
-            $order->update(['kitchen_status' => 'served']);
+            // If table has no active unclosed order, free the table directly
+            $table->update([
+                'status' => 'available',
+                'customer_name' => null,
+                'customer_phone' => null
+            ]);
+            return response()->json(['success' => true, 'message' => 'Table freed successfully.']);
         }
 
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
+            // Auto mark all kitchen tickets as served
+            \App\Models\KitchenTicket::where('order_id', $order->id)
+                ->where('status', '!=', 'cancelled')
+                ->update(['status' => 'served']);
+
+            // Auto mark order items as served
+            \App\Models\OrderItem::where('order_id', $order->id)
+                ->update(['kitchen_status' => 'served']);
+
             // Close the order
-            $order->update(['status' => 'closed']);
+            $order->update([
+                'status' => 'closed',
+                'kitchen_status' => 'served'
+            ]);
             
-            // Free the table and clear any customer details
+            // Free the table and clear customer details
             $table->update([
                 'status' => 'available',
                 'customer_name' => null,
@@ -237,7 +229,7 @@ class WaiterController extends Controller
             ]);
 
             \Illuminate\Support\Facades\DB::commit();
-            return response()->json(['success' => true, 'message' => 'Order closed and table is now available.']);
+            return response()->json(['success' => true, 'message' => 'Order completed successfully and table freed.']);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Error completing order: ' . $e->getMessage()], 500);

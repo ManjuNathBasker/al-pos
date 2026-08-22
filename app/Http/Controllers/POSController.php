@@ -182,15 +182,101 @@ class POSController extends Controller
     // ─────────────────────────────────────────────────────────────
     public function activeTables()
     {
-        $tables = \App\Models\RestaurantTable::where('status', 'occupied')
-            ->with(['activeOrder' => function($q) {
-                $q->with('items');
+        $companyId = session('company_id');
+        $query = \App\Models\RestaurantTable::where('status', 'occupied');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $tables = $query->with(['activeOrder' => function($q) {
+                $q->with('items', 'customer');
             }, 'section'])
             ->get();
 
         return response()->json([
             'success' => true,
-            'tables' => $tables
+            'tables'  => $tables
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  GET /pos/active-orders — list live active orders
+    // ─────────────────────────────────────────────────────────────
+    public function activeOrders()
+    {
+        $companyId = session('company_id');
+        $query = Order::query();
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        // Active orders: orders that are NOT completed/closed/cancelled or kitchen_status != served
+        $dbOrders = $query->where(function($q) {
+                $q->whereNotIn('status', ['completed', 'closed', 'cancelled'])
+                  ->where(function($subQ) {
+                      $subQ->whereNull('kitchen_status')
+                           ->orWhere('kitchen_status', '!=', 'served');
+                  });
+            })
+            ->with(['customer', 'table'])
+            ->orderBy('created_at', 'asc') // Oldest first (highest duration)
+            ->take(20)
+            ->get();
+
+        $formattedOrders = $dbOrders->map(function ($order) {
+            $diffMinutes = (int) now()->diffInMinutes($order->created_at);
+            if ($diffMinutes >= 1440) {
+                $durationStr = floor($diffMinutes / 1440) . 'd ' . floor(($diffMinutes % 1440) / 60) . 'h';
+            } elseif ($diffMinutes >= 60) {
+                $durationStr = floor($diffMinutes / 60) . 'h ' . ($diffMinutes % 60) . 'm';
+            } else {
+                $durationStr = max(1, $diffMinutes) . 'm';
+            }
+
+            $serviceType = ($order->table_id || $order->table) ? 'dine_in' : (($order->service_type === 'retail' || empty($order->service_type)) ? 'counter' : $order->service_type);
+            $serviceLabel = match ($serviceType) {
+                'dine_in' => 'Dine In',
+                'takeaway', 'pickup' => 'Pickup',
+                'delivery' => 'Delivery',
+                default => 'Counter',
+            };
+
+            $rawStatus = strtolower($order->kitchen_status ?? $order->status ?? 'pending');
+            $status = match ($rawStatus) {
+                'preparing' => 'preparing',
+                'ready' => 'ready',
+                'pending', 'placed', 'open', 'paid', 'none' => 'pending',
+                default => 'pending',
+            };
+
+            $paymentStatus = strtolower($order->payment_status ?? ($order->status === 'paid' ? 'paid' : 'unpaid'));
+            $paymentStatusLabel = match ($paymentStatus) {
+                'paid' => 'Paid',
+                'partial' => 'Partial',
+                default => 'Unpaid',
+            };
+
+            return [
+                'id' => $order->id,
+                'order_number' => $order->order_number ?? ('#ORD-' . str_pad($order->id, 5, '0', STR_PAD_LEFT)),
+                'service_type' => $serviceType,
+                'service_type_label' => $serviceLabel,
+                'time' => $order->created_at->format('h:i A'),
+                'duration' => $durationStr,
+                'status' => $status,
+                'status_label' => ucfirst($status),
+                'payment_status' => $paymentStatus,
+                'payment_status_label' => $paymentStatusLabel,
+                'total_amount' => (float) $order->total_amount,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'orders'  => $formattedOrders,
+            'count'   => $formattedOrders->count(),
         ]);
     }
 
@@ -228,6 +314,10 @@ class POSController extends Controller
             'cart' => $cart,
             'order' => [
                 'id' => $order->id,
+                'status' => $order->status,
+                'payment_status' => $order->payment_status ?? ($order->status === 'paid' ? 'paid' : 'unpaid'),
+                'service_type' => $order->service_type,
+                'table' => $order->table,
                 'customer' => $order->customer,
                 'discount_value' => $order->discount_value,
                 'discount_type' => $order->discount_type,
@@ -456,12 +546,28 @@ class POSController extends Controller
                 }
             }
 
+            // Resolve service type accurately without defaulting to 'retail'
+            $resolvedServiceType = $request->service_type;
+            if ($request->order_id) {
+                $existingOrder = Order::find($request->order_id);
+                if ($existingOrder) {
+                    if ($existingOrder->table_id || $existingOrder->service_type === 'dine_in') {
+                        $resolvedServiceType = 'dine_in';
+                    } elseif (!empty($existingOrder->service_type) && $existingOrder->service_type !== 'retail') {
+                        $resolvedServiceType = $existingOrder->service_type;
+                    }
+                }
+            }
+            if (!$resolvedServiceType || $resolvedServiceType === 'retail') {
+                $resolvedServiceType = ($request->table_id ? 'dine_in' : 'counter');
+            }
+
             // Create or Update Order
             $orderData = [
                 'user_id'          => auth()->id(),
                 'customer_id'      => $customer->id,
-                'service_type'     => $request->service_type ?? 'retail',
-                'delivery_status'  => ($request->service_type === 'delivery') ? 'pending' : null,
+                'service_type'     => $resolvedServiceType,
+                'delivery_status'  => ($resolvedServiceType === 'delivery') ? 'pending' : null,
                 'discount_amount'  => $totalDiscountAmount,
                 'discount_type'    => 'fixed',
                 'discount_value'   => $totalDiscountAmount,
@@ -495,14 +601,6 @@ class POSController extends Controller
             if ($request->order_id) {
                 $order = Order::findOrFail($request->order_id);
                 $order->update($orderData);
-                
-                // Removed: Do not automatically free the table or mark KOT as served here.
-                // The waiter panel's "Complete Order" action will handle that.
-
-                // Clear existing items and re-add from cart to ensure consistency (except for dine-in to preserve KDS tracking)
-                if ($order->service_type !== 'dine_in') {
-                    $order->items()->delete();
-                }
             } else {
                 if (empty($orderData['order_number'])) {
                     $orderData['order_number'] = 'ORD-' . str_pad((Order::withTrashed()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
@@ -557,38 +655,87 @@ class POSController extends Controller
                 Coupon::find($request->coupon_id)->increment('used_count');
             }
 
-            // Save items
-            if (!$request->order_id || $order->service_type !== 'dine_in') {
+            // Save or update items cleanly without breaking KOT ticket links
+            if ($request->order_id) {
+                $existingItemMap = $order->items->keyBy('product_id');
+                $cartProductIds = collect($cart)->pluck('id')->toArray();
+
+                // Safely remove items no longer in cart (only if not linked to active KOT items)
+                foreach ($order->items as $existingItem) {
+                    if (!in_array($existingItem->product_id, $cartProductIds)) {
+                        $isUsedInKOT = \App\Models\KitchenTicketItem::where('order_item_id', $existingItem->id)->exists();
+                        if (!$isUsedInKOT) {
+                            $existingItem->delete();
+                        }
+                    }
+                }
+
+                foreach ($cart as $item) {
+                    if ($existingItemMap->has($item['id'])) {
+                        $existingItem = $existingItemMap->get($item['id']);
+                        $existingItem->update([
+                            'product_name' => $item['name'],
+                            'unit_price'   => $item['price'],
+                            'quantity'     => $item['qty'],
+                            'subtotal'     => $item['price'] * $item['qty'],
+                        ]);
+                    } else {
+                        OrderItem::create([
+                            'order_id'     => $order->id,
+                            'product_id'   => $item['id'],
+                            'product_name' => $item['name'],
+                            'unit_price'   => $item['price'],
+                            'quantity'     => $item['qty'],
+                            'subtotal'     => $item['price'] * $item['qty'],
+                        ]);
+                    }
+                }
+            } else {
                 foreach ($cart as $item) {
                     OrderItem::create([
-                        'order_id'   => $order->id,
-                        'product_id' => $item['id'],
-                        'product_name'    => $item['name'],
-                        'unit_price'      => $item['price'],
-                        'quantity'        => $item['qty'],
-                        'subtotal'   => $item['price'] * $item['qty'],
+                        'order_id'     => $order->id,
+                        'product_id'   => $item['id'],
+                        'product_name' => $item['name'],
+                        'unit_price'   => $item['price'],
+                        'quantity'     => $item['qty'],
+                        'subtotal'     => $item['price'] * $item['qty'],
                     ]);
                 }
             }
 
-            // If it's a new Takeaway or Delivery order in Restaurant Mode, send to Kitchen
+            // KOT System Integration: Check if KOT/Kitchen system is enabled for company
             $company = Company::find(session('company_id'));
-            if (!$request->order_id && $company->isModuleEnabled('restaurant_mode') && in_array($order->service_type, ['takeaway', 'delivery'])) {
-                $ticket = \App\Models\KitchenTicket::create([
-                    'order_id'      => $order->id,
-                    'company_id'    => $company->id,
-                    'ticket_number' => 'KOT-' . rand(100, 999),
-                    'status'        => 'pending',
-                ]);
+            $isKOTEnabled = $company && (
+                $company->isModuleEnabled('kitchen_display') || 
+                $company->isModuleEnabled('kot_system') || 
+                $company->isModuleEnabled('restaurant_mode')
+            );
 
-                foreach ($order->items as $orderItem) {
-                    \App\Models\KitchenTicketItem::create([
-                        'kitchen_ticket_id' => $ticket->id,
-                        'order_item_id'     => $orderItem->id,
-                        'product_name'      => $orderItem->product_name,
-                        'quantity'          => $orderItem->quantity,
-                        'status'            => 'pending',
+            if ($isKOTEnabled) {
+                // Ensure a KitchenTicket exists for this order if not already created
+                $existingTicket = \App\Models\KitchenTicket::where('order_id', $order->id)
+                    ->where('status', '!=', 'cancelled')
+                    ->first();
+
+                if (!$existingTicket && $order->items()->count() > 0) {
+                    $ticket = \App\Models\KitchenTicket::create([
+                        'order_id'      => $order->id,
+                        'company_id'    => $company->id,
+                        'ticket_number' => 'KOT-' . str_pad($order->id, 4, '0', STR_PAD_LEFT) . '-' . rand(10, 99),
+                        'status'        => 'pending',
                     ]);
+
+                    foreach ($order->items as $orderItem) {
+                        \App\Models\KitchenTicketItem::create([
+                            'kitchen_ticket_id' => $ticket->id,
+                            'order_item_id'     => $orderItem->id,
+                            'product_name'      => $orderItem->product_name,
+                            'quantity'          => $orderItem->quantity,
+                            'status'            => 'pending',
+                        ]);
+                    }
+
+                    event(new \App\Events\NewKOTGenerated($ticket));
                 }
             }
 

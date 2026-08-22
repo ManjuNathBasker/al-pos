@@ -69,6 +69,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/pos/cart/remove', [POSController::class, 'cartRemove'])->name('pos.cart.remove');
         Route::post('/pos/cart/clear', [POSController::class, 'cartClear'])->name('pos.cart.clear');
         Route::get('/pos/active-tables', [POSController::class, 'activeTables'])->name('pos.active-tables');
+        Route::get('/pos/active-orders', [POSController::class, 'activeOrders'])->name('pos.active-orders');
         Route::post('/pos/load-order', [POSController::class, 'loadOrder'])->name('pos.load-order');
         Route::post('/pos/checkout', [POSController::class, 'checkout'])->name('pos.checkout');
 
