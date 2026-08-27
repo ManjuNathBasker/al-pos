@@ -262,21 +262,42 @@
                 <p class="text-xs text-[#64748B] mt-0.5">Configure company-wide payment, tax, and card commission rules.</p>
             </div>
             <div class="p-6 space-y-5">
-                <div class="max-w-xs">
-                    <label for="card_commission_tax" class="block text-xs font-semibold text-[#172033] mb-1">
-                        Card Commission Tax (%)
-                    </label>
-                    <p class="text-xs text-[#64748B] mb-2">
-                        Tax percentage applied on bank commission deduction during POS card settlements.
-                    </p>
-                    <div class="flex items-center gap-2">
-                        <input type="number" name="card_commission_tax" id="card_commission_tax"
-                               value="{{ old('card_commission_tax', $cardCommissionTax ?? 0) }}"
-                               step="0.01" min="0" max="100"
-                               class="w-32 h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E] @error('card_commission_tax') border-[#FF4848] @enderror">
-                        <span class="text-sm font-semibold text-[#64748B]">%</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {{-- Order Sales Tax --}}
+                    <div>
+                        <label for="tax_percentage" class="block text-xs font-semibold text-[#172033] mb-1">
+                            POS Sales Tax Rate (%)
+                        </label>
+                        <p class="text-xs text-[#64748B] mb-2">
+                            Default tax percentage applied to POS orders during checkout.
+                        </p>
+                        <div class="flex items-center gap-2">
+                            <input type="number" name="tax_percentage" id="tax_percentage"
+                                   value="{{ old('tax_percentage', $taxPercentage ?? 8.0) }}"
+                                   step="0.01" min="0" max="100"
+                                   class="w-32 h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E] @error('tax_percentage') border-[#FF4848] @enderror">
+                            <span class="text-sm font-semibold text-[#64748B]">%</span>
+                        </div>
+                        @error('tax_percentage')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
                     </div>
-                    @error('card_commission_tax')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
+
+                    {{-- Card Commission Tax --}}
+                    <div>
+                        <label for="card_commission_tax" class="block text-xs font-semibold text-[#172033] mb-1">
+                            Card Commission Tax (%)
+                        </label>
+                        <p class="text-xs text-[#64748B] mb-2">
+                            Tax percentage applied on bank commission deduction during POS card settlements.
+                        </p>
+                        <div class="flex items-center gap-2">
+                            <input type="number" name="card_commission_tax" id="card_commission_tax"
+                                   value="{{ old('card_commission_tax', $cardCommissionTax ?? 0) }}"
+                                   step="0.01" min="0" max="100"
+                                   class="w-32 h-11 px-3.5 bg-white border border-[#E5E7EB] rounded-lg text-sm font-mono text-[#172033] focus:outline-none focus:border-[#F5703E] focus:ring-1 focus:ring-[#F5703E] @error('card_commission_tax') border-[#FF4848] @enderror">
+                            <span class="text-sm font-semibold text-[#64748B]">%</span>
+                        </div>
+                        @error('card_commission_tax')<p class="mt-1 text-xs text-[#FF4848]">{{ $message }}</p>@enderror
+                    </div>
                 </div>
             </div>
 

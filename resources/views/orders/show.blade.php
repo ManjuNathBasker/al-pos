@@ -14,26 +14,64 @@
 
         <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2.5">
                     <h1 class="text-2xl font-bold font-mono text-[#172033]">{{ $order->order_number }}</h1>
+                    
+                    {{-- Order Status Badge --}}
                     @if($order->status == 'paid')
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-[#29AB6C] border border-emerald-200">Paid</span>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-[#29AB6C] border border-emerald-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Paid
+                        </span>
                     @elseif($order->status == 'pending')
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-[#FF9932] border border-amber-200">Pending</span>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-[#FF9932] border border-amber-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pending
+                        </span>
                     @elseif($order->status == 'cancelled')
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-[#FF4848] border border-red-200">Cancelled</span>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-[#FF4848] border border-red-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Cancelled
+                        </span>
                     @else
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-[#64748B] border border-slate-200">{{ ucfirst($order->status) }}</span>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-[#64748B] border border-slate-200">{{ ucfirst($order->status) }}</span>
+                    @endif
+
+                    {{-- Service Type Badge --}}
+                    @php
+                        $stKey = $order->service_type ?: ($order->table_id ? 'dine_in' : 'retail');
+                        $serviceType = $stKey;
+                        $serviceLabel = match ($stKey) {
+                            'dine_in' => 'Dine-In',
+                            'takeaway', 'pickup' => 'Takeaway',
+                            'delivery' => 'Delivery',
+                            default => 'Counter',
+                        };
+                    @endphp
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold 
+                        {{ $stKey === 'delivery' ? 'bg-blue-50 text-blue-700 border border-blue-200' : '' }}
+                        {{ $stKey === 'dine_in' ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' }}
+                        {{ $stKey === 'takeaway' || $stKey === 'pickup' ? 'bg-purple-50 text-purple-700 border border-purple-200' : '' }}
+                        {{ in_array($stKey, ['retail', 'counter']) ? 'bg-slate-100 text-slate-700 border border-slate-200' : '' }}">
+                        ⚡ {{ $serviceLabel }}
+                    </span>
+
+                    {{-- Delivery Status Badge (If Delivery) --}}
+                    @if($serviceType === 'delivery' && $order->delivery_status)
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            🚚 Delivery: {{ ucfirst(str_replace('_', ' ', $order->delivery_status)) }}
+                        </span>
+                    @endif
+
+                    {{-- Delivery Settlement Status Badge --}}
+                    @if($order->settlement_status)
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium {{ $order->settlement_status === 'settled' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
+                            Partner Settlement: {{ ucfirst($order->settlement_status) }}
+                        </span>
                     @endif
                 </div>
-                <div class="flex flex-wrap items-center gap-2.5 mt-1 text-xs text-[#64748B]">
+
+                <div class="flex flex-wrap items-center gap-2.5 mt-2 text-xs text-[#64748B]">
                     <span>Placed on {{ $order->created_at->format('M d, Y') }} at {{ $order->created_at->format('h:i A') }}</span>
                     <span class="text-slate-300">•</span>
                     <span>Cashier: <strong class="text-[#172033]">{{ $order->user->name ?? 'System' }}</strong></span>
-                    @if($order->service_type)
-                        <span class="text-slate-300">•</span>
-                        <span>Service: <strong class="text-[#172033]">{{ ucfirst(str_replace('_', ' ', $order->service_type)) }}</strong></span>
-                    @endif
                 </div>
             </div>
 
@@ -45,7 +83,7 @@
                     <span>Print Bill</span>
                 </button>
 
-                {{-- WhatsApp --}}
+                {{-- WhatsApp Receipt --}}
                 @php
                     $waMessage = "Receipt for Order {$order->order_number}%0A";
                     $waMessage .= "Date: " . $order->created_at->format('Y-m-d H:i') . "%0A";
@@ -77,13 +115,14 @@
     </div>
 
     {{-- ════════════════════════════════════════════════════════════
-         2. MAIN ORDER DETAILS & BILL
+         2. MAIN CONTENT GRID
     ════════════════════════════════════════════════════════════ --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {{-- Left 2 Columns: Items & Financial Breakdown --}}
         <div class="lg:col-span-2 space-y-6">
 
+            {{-- Ordered Items Table --}}
             <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden print:hidden">
                 <div class="px-6 py-4 border-b border-[#E5E7EB] bg-slate-50/75 flex items-center justify-between">
                     <div>
@@ -133,20 +172,26 @@
                 <div class="p-6 bg-slate-50/50 border-t border-[#E5E7EB]">
                     <div class="w-full sm:w-80 ml-auto space-y-2.5 text-sm">
                         <div class="flex justify-between text-[#64748B]">
-                            <span>Subtotal</span>
+                            <span>Items Subtotal</span>
                             <span class="font-mono font-medium text-[#172033]">@currency($order->items->sum('subtotal'), $order)</span>
                         </div>
                         @if($order->discount_amount > 0)
                         <div class="flex justify-between text-[#29AB6C]">
-                            <span>Discount Applied</span>
+                            <span>Discount Applied {{ $order->coupon ? '('.$order->coupon->code.')' : '' }}</span>
                             <span class="font-mono font-medium">-@currency($order->discount_amount, $order)</span>
                         </div>
                         @endif
-                        <div class="flex justify-between text-[#64748B] pb-2.5 border-b border-[#E5E7EB]">
+                        <div class="flex justify-between text-[#64748B]">
                             <span>Tax Amount</span>
                             <span class="font-mono font-medium text-[#172033]">@currency($order->tax_amount ?? 0, $order)</span>
                         </div>
-                        <div class="flex justify-between text-base font-bold text-[#172033] pt-1">
+                        @if($order->delivery_commission_amount > 0)
+                        <div class="flex justify-between text-blue-600">
+                            <span>Delivery Partner Commission</span>
+                            <span class="font-mono font-medium">@currency($order->delivery_commission_amount, $order)</span>
+                        </div>
+                        @endif
+                        <div class="flex justify-between text-base font-bold text-[#172033] pt-2 border-t border-[#E5E7EB]">
                             <span>Grand Total</span>
                             <span class="font-mono text-lg text-[#F5703E]">@currency($order->total_amount, $order)</span>
                         </div>
@@ -154,17 +199,148 @@
                 </div>
             </div>
 
+            {{-- Order Notes (If Any) --}}
+            @if($order->note)
+            <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-6 hide-on-print">
+                <h3 class="text-sm font-semibold text-[#172033] mb-1">Order Notes</h3>
+                <p class="text-xs text-[#64748B] bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed font-mono">
+                    {{ $order->note }}
+                </p>
+            </div>
+            @endif
+
         </div>
 
-        {{-- Right Column: Payment & Customer Details --}}
+        {{-- Right Column: Service, Delivery, Customer & Payment Details --}}
         <div class="space-y-6 hide-on-print">
 
-            {{-- Payment Breakdown Card --}}
+            {{-- Service Mode & Dining Details --}}
+            @if($serviceType === 'dine_in' || $order->table || $order->waiter)
             <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-[#E5E7EB] bg-slate-50/75">
-                    <h3 class="text-sm font-semibold text-[#172033]">Payment Breakdown</h3>
+                <div class="px-6 py-4 border-b border-[#E5E7EB] bg-amber-50/50 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-amber-900">🪑 Dining Details</h3>
+                    <span class="text-xs font-bold text-amber-700 uppercase">Dine-In Order</span>
+                </div>
+                <div class="p-6 space-y-3 text-sm">
+                    @if($order->table)
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span class="text-xs text-[#64748B]">Table</span>
+                        <span class="font-bold text-[#172033]">{{ $order->table->name }} {{ $order->table->section ? '('.$order->table->section->name.')' : '' }}</span>
+                    </div>
+                    @endif
+                    @if($order->waiter)
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-[#64748B]">Assigned Waiter</span>
+                        <span class="font-semibold text-[#172033]">{{ $order->waiter->name }}</span>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- Delivery & Address Card (If Delivery Service Mode or Delivery Partner exists) --}}
+            @if($serviceType === 'delivery' || $order->delivery_partner_id || $order->billing_address)
+            <div class="bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-blue-100 bg-blue-50/60 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-blue-900">🚚 Delivery Information</h3>
+                    <span class="text-xs font-bold text-blue-700 uppercase">Delivery</span>
                 </div>
                 <div class="p-6 space-y-3.5 text-sm">
+                    {{-- Delivery Partner --}}
+                    @php $partner = $order->deliveryPartner ?? ($order->delivery_partner_id ? \App\Models\DeliveryPartner::find($order->delivery_partner_id) : null); @endphp
+                    @if($partner)
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span class="text-xs text-[#64748B]">Delivery Partner</span>
+                        <span class="font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {{ $partner->name }} ({{ $partner->commission_percentage }}%)
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span class="text-xs text-[#64748B]">Partner Commission</span>
+                        <span class="font-mono font-bold text-blue-800">@currency($order->delivery_commission_amount, $order)</span>
+                    </div>
+                    @endif
+
+                    {{-- Delivery Status --}}
+                    @if($order->delivery_status)
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span class="text-xs text-[#64748B]">Delivery Status</span>
+                        <span class="font-semibold text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                            {{ ucfirst(str_replace('_', ' ', $order->delivery_status)) }}
+                        </span>
+                    </div>
+                    @endif
+
+                    {{-- Partner Settlement Status --}}
+                    @if($order->settlement_status)
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span class="text-xs text-[#64748B]">Settlement Status</span>
+                        <span class="font-semibold text-xs {{ $order->settlement_status === 'settled' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-amber-700 bg-amber-50 border-amber-200' }} px-2 py-0.5 rounded border">
+                            {{ ucfirst($order->settlement_status) }}
+                        </span>
+                    </div>
+                    @endif
+
+                    {{-- Delivery Address --}}
+                    @php $address = $order->billing_address ?: ($order->customer ? $order->customer->address : null); @endphp
+                    @if($address)
+                    <div>
+                        <span class="block text-xs font-semibold text-[#64748B] mb-1">Delivery Address</span>
+                        <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-[#172033] font-medium leading-relaxed">
+                            {{ $address }}
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- Customer Information Card --}}
+            <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-[#E5E7EB] bg-slate-50/75 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-[#172033]">Customer Information</h3>
+                    <span class="text-xs font-medium text-[#64748B]">Profile & Contact</span>
+                </div>
+                <div class="p-6 space-y-3.5 text-sm">
+                    @php
+                        $custName = $order->customer ? $order->customer->name : ($order->customer_name ?: 'Walk-in Customer');
+                        $custPhone = $order->customer ? $order->customer->phone : ($order->customer_phone ?: null);
+                    @endphp
+
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-orange-100 text-[#F5703E] flex items-center justify-center font-bold text-sm border border-orange-200 flex-shrink-0">
+                            {{ strtoupper(substr($custName, 0, 2)) }}
+                        </div>
+                        <div>
+                            @if($order->customer)
+                                <a href="{{ route('customers.show', $order->customer) }}" class="font-semibold text-[#172033] hover:text-[#F5703E] transition-colors block">
+                                    {{ $custName }}
+                                </a>
+                            @else
+                                <span class="font-semibold text-[#172033] block">{{ $custName }}</span>
+                            @endif
+                            <span class="text-xs text-[#64748B]">{{ $custPhone ?: 'No phone provided' }}</span>
+                        </div>
+                    </div>
+
+                    @if($order->customer)
+                    <div class="pt-2.5 border-t border-[#E5E7EB] flex justify-between text-xs">
+                        <span class="text-[#64748B]">Customer Wallet Balance:</span>
+                        <span class="font-mono font-bold {{ $order->customer->wallet_balance >= 0 ? 'text-[#29AB6C]' : 'text-[#FF4848]' }}">
+                            @currency($order->customer->wallet_balance)
+                        </span>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Payment Breakdown & Card Commission Card --}}
+            <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-[#E5E7EB] bg-slate-50/75 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-[#172033]">Payment Breakdown</h3>
+                    <span class="text-xs font-semibold text-slate-500">Transactions</span>
+                </div>
+                <div class="p-6 space-y-3 text-sm">
                     @if($order->payments && $order->payments->count() > 0)
                         @foreach($order->payments as $payment)
                         <div class="flex items-center justify-between py-2 {{ !$loop->last ? 'border-b border-slate-100' : '' }}">
@@ -191,7 +367,7 @@
                         </div>
 
                         @if($order->change_returned > 0)
-                        <div class="flex justify-between text-xs text-amber-600 font-semibold">
+                        <div class="flex justify-between text-xs text-amber-600 font-semibold pt-1">
                             <span>Change Returned</span>
                             <span class="font-mono">@currency($order->change_returned, $order)</span>
                         </div>
@@ -202,35 +378,32 @@
                             <span class="text-xs font-semibold text-[#172033]">{{ ucfirst($order->payment_method ?? 'N/A') }}</span>
                         </div>
                     @endif
-                </div>
-            </div>
 
-            {{-- Customer Card --}}
-            <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-[#E5E7EB] bg-slate-50/75">
-                    <h3 class="text-sm font-semibold text-[#172033]">Customer Information</h3>
-                </div>
-                <div class="p-6 space-y-3 text-sm">
-                    @if($order->customer)
-                        <div class="flex items-center gap-3 mb-2">
-                            <div class="w-10 h-10 rounded-full bg-orange-100 text-[#F5703E] flex items-center justify-center font-bold text-sm border border-orange-200">
-                                {{ strtoupper(substr($order->customer->name, 0, 2)) }}
-                            </div>
-                            <div>
-                                <a href="{{ route('customers.show', $order->customer) }}" class="font-semibold text-[#172033] hover:text-[#F5703E] transition-colors block">
-                                    {{ $order->customer->name }}
-                                </a>
-                                <span class="text-xs text-[#64748B]">{{ $order->customer->phone ?: 'No phone' }}</span>
-                            </div>
+                    {{-- Card Commission Settlement Breakdown --}}
+                    @if($order->card_commission_amount > 0 || $order->card_type_id)
+                    @php $cardType = $order->cardType ?? ($order->card_type_id ? \App\Models\CardType::find($order->card_type_id) : null); @endphp
+                    <div class="mt-4 pt-3 border-t border-slate-200 bg-slate-50 p-3 rounded-lg space-y-1.5 text-xs">
+                        <div class="font-bold text-slate-800 flex justify-between items-center mb-1">
+                            <span>💳 Card Processing Settlement</span>
+                            <span class="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded font-mono">{{ $cardType->name ?? 'Card Settlement' }}</span>
                         </div>
-                        <div class="pt-2 border-t border-[#E5E7EB] flex justify-between text-xs">
-                            <span class="text-[#64748B]">Wallet Balance:</span>
-                            <span class="font-mono font-bold {{ $order->customer->wallet_balance >= 0 ? 'text-[#29AB6C]' : 'text-[#FF4848]' }}">
-                                @currency($order->customer->wallet_balance)
-                            </span>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Bank Commission Fee:</span>
+                            <span class="font-mono">@currency($order->card_commission_amount, $order)</span>
                         </div>
-                    @else
-                        <p class="text-xs text-[#64748B]">Walk-in / Guest Customer</p>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Commission Tax:</span>
+                            <span class="font-mono">@currency($order->card_commission_tax_amount, $order)</span>
+                        </div>
+                        <div class="flex justify-between font-semibold text-slate-900 border-t border-slate-200 pt-1.5 mt-1">
+                            <span>Total Bank Deduction:</span>
+                            <span class="font-mono text-red-600">-@currency($order->card_commission_total_deduction, $order)</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-emerald-700 bg-emerald-50 p-1.5 rounded border border-emerald-200 mt-1">
+                            <span>Net Revenue Received:</span>
+                            <span class="font-mono">@currency($order->card_net_received, $order)</span>
+                        </div>
+                    </div>
                     @endif
                 </div>
             </div>
@@ -254,8 +427,14 @@
         <div style="margin-bottom: 12px;">
             <p style="margin: 0;">Date: {{ $order->created_at->format('n/j/Y, g:i:s A') }}</p>
             <p style="margin: 0;">Cashier: {{ $order->user->name ?? 'Admin' }}</p>
-            @if($order->customer_id)
-                <p style="margin: 0;">Customer: {{ $order->customer->name ?? 'Walk-in' }}</p>
+            @if($order->customer_id || $order->customer_name)
+                <p style="margin: 0;">Customer: {{ $order->customer->name ?? $order->customer_name }}</p>
+            @endif
+            @if($order->service_type)
+                <p style="margin: 0;">Service Mode: {{ $serviceLabel }}</p>
+            @endif
+            @if($order->billing_address)
+                <p style="margin: 0;">Address: {{ $order->billing_address }}</p>
             @endif
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">

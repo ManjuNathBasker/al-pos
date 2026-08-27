@@ -60,6 +60,7 @@ class POSController extends Controller
         // Load company and settings
         $company = Company::find(session('company_id'));
         $cardCommissionTax = $company ? $company->getCardCommissionTax() : 0;
+        $companyTaxPercentage = $company ? $company->getTaxPercentage() : 8.0;
         $currencyConfig = $company ? $company->getCurrencyConfig() : default_currency_config();
 
         // Load delivery partners
@@ -69,7 +70,7 @@ class POSController extends Controller
 
         return view('pos.index', compact(
             'categories', 'products', 'cart', 'paymentAccounts',
-            'cardAccountIds', 'cardTypes', 'cardCommissionTax', 'currencyConfig', 'deliveryPartners'
+            'cardAccountIds', 'cardTypes', 'cardCommissionTax', 'companyTaxPercentage', 'currencyConfig', 'deliveryPartners'
         ));
     }
 
@@ -237,8 +238,8 @@ class POSController extends Controller
 
             $serviceType = ($order->table_id || $order->table) ? 'dine_in' : (($order->service_type === 'retail' || empty($order->service_type)) ? 'counter' : $order->service_type);
             $serviceLabel = match ($serviceType) {
-                'dine_in' => 'Dine In',
-                'takeaway', 'pickup' => 'Pickup',
+                'dine_in' => 'Dine-In',
+                'takeaway', 'pickup' => 'Takeaway',
                 'delivery' => 'Delivery',
                 default => 'Counter',
             };
@@ -332,15 +333,27 @@ class POSController extends Controller
     //  Body: { discount_percent: float, note: string, total: float, order_id: int|null }
     //  Returns: { success: true, order_id: string, total: float }
     // ─────────────────────────────────────────────────────────────
-        public function customer(Request $request)
+    public function customer(Request $request)
     {
-        $phone = $request->query('phone');
-        if (!$phone) return response()->json(['success' => false]);
-        $customer = Customer::where('phone', $phone)->first();
-        if ($customer) {
-            return response()->json(['success' => true, 'customer' => $customer]);
+        $term = $request->query('query') ?? $request->query('phone') ?? $request->query('search');
+        if (!$term) {
+            return response()->json(['success' => false, 'customers' => []]);
         }
-        return response()->json(['success' => false]);
+
+        $customers = Customer::where(function ($q) use ($term) {
+            $q->where('phone', 'like', "%{$term}%")
+              ->orWhere('name', 'like', "%{$term}%");
+        })->limit(10)->get();
+
+        if ($customers->isNotEmpty()) {
+            return response()->json([
+                'success'   => true,
+                'customers' => $customers,
+                'customer'  => $customers->first()
+            ]);
+        }
+
+        return response()->json(['success' => false, 'customers' => []]);
     }
 
         public function validateCoupon(Request $request)
@@ -479,9 +492,10 @@ class POSController extends Controller
             // Total discount on order = Manual + Coupon + Card Offer Discounts
             $totalDiscountAmount = $manualDiscount + $couponDiscount + $totalCardDiscount;
             
-            // Adjust tax amount
+            // Adjust tax amount using company configured tax percentage
             $taxableAmount = max(0, $request->subtotal - $totalDiscountAmount);
-            $taxAmount = $taxableAmount * 0.08;
+            $companyTaxPct = $company ? ($company->getTaxPercentage() / 100) : 0.08;
+            $taxAmount = $taxableAmount * $companyTaxPct;
 
             // Final Order Total = Subtotal - Total Discount + Tax + Card Service Charges
             $finalTotalAmount = max(0, $request->subtotal - $totalDiscountAmount + $taxAmount + $totalCardServiceCharge);
@@ -489,6 +503,23 @@ class POSController extends Controller
             // ── Card Commission Calculation ────────────────────────────────
             // Calculated from the card_type_id sent in the checkout payload.
             $cardTypeId         = $request->input('card_type_id');
+            if (!$cardTypeId && $request->is_split && is_array($request->split_payments)) {
+                foreach ($request->split_payments as $sp) {
+                    if (!empty($sp['card_type_id'])) {
+                        $cardTypeId = $sp['card_type_id'];
+                        break;
+                    }
+                }
+            }
+            if (!$cardTypeId && is_array($request->card_details)) {
+                foreach ($request->card_details as $cd) {
+                    if (!empty($cd['card_type_id'])) {
+                        $cardTypeId = $cd['card_type_id'];
+                        break;
+                    }
+                }
+            }
+
             $commissionAmount   = 0;
             $commissionTax      = 0;
             $commissionTotal    = 0;
@@ -558,8 +589,8 @@ class POSController extends Controller
                     }
                 }
             }
-            if (!$resolvedServiceType || $resolvedServiceType === 'retail') {
-                $resolvedServiceType = ($request->table_id ? 'dine_in' : 'counter');
+            if (!$resolvedServiceType || $resolvedServiceType === 'counter') {
+                $resolvedServiceType = ($request->table_id ? 'dine_in' : ($request->service_type && in_array($request->service_type, ['retail', 'dine_in', 'takeaway', 'delivery']) ? $request->service_type : 'retail'));
             }
 
             // Create or Update Order

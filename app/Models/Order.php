@@ -168,6 +168,11 @@ class Order extends Model
         return $this->hasMany(WalletTransaction::class);
     }
 
+    public function deliveryPartner()
+    {
+        return $this->belongsTo(DeliveryPartner::class);
+    }
+
     // ── Currency Helpers ──────────────────────────────────────────────
     public function getCurrencyConfig(): array
     {

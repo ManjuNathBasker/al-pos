@@ -19,8 +19,8 @@ class WaiterController extends Controller
 
     public function createOrder(RestaurantTable $table)
     {
-        $categories = Category::all();
-        $products = Product::where('is_active', true)->get();
+        $categories = Category::orderBy('name')->get();
+        $products   = Product::where('is_active', true)->orderBy('name')->get();
         
         $activeOrder = Order::where('table_id', $table->id)
             ->whereIn('status', ['pending', 'processing', 'paid'])

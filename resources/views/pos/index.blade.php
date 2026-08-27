@@ -707,7 +707,7 @@
                     <template x-if="lastOrderDiscount>0">
                         <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span x-text="'Discount ('+(lastOrderDiscountPercent||0)+'%):'"></span><span x-text="'-' + formatCurrency(lastOrderDiscount)"></span></div>
                     </template>
-                    <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span>Tax (8%):</span><span x-text="formatCurrency(lastOrderTax)"></span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:2px;"><span x-text="'Tax (' + taxRate + '%):'"></span><span x-text="formatCurrency(lastOrderTax)"></span></div>
                     <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin-top:6px;border-top:1px solid #000;padding-top:6px;">
                         <span>TOTAL AMOUNT:</span><span x-text="formatCurrency(lastOrderTotal)"></span>
                     </div>
@@ -1335,7 +1335,7 @@
                     </div>
                 </template>
                 <div class="flex justify-between text-gray-500">
-                    <span>Tax (8%)</span>
+                    <span x-text="'Tax (' + taxRate + '%)'"></span>
                     <span class="text-gray-900 price tabular" x-text="formatCurrency(taxAmount)"></span>
                 </div>
                 <template x-if="cardServiceCharge>0">
@@ -1418,7 +1418,7 @@
                         <template x-if="discountAmount>0">
                             <div class="flex justify-between text-red-500"><span>Discount</span><span class="price tabular" x-text="'-' + formatCurrency(discountAmount)"></span></div>
                         </template>
-                        <div class="flex justify-between text-gray-500"><span>Tax (8%)</span><span class="text-gray-900 price tabular" x-text="formatCurrency(taxAmount)"></span></div>
+                        <div class="flex justify-between text-gray-500"><span x-text="'Tax (' + taxRate + '%)'"></span><span class="text-gray-900 price tabular" x-text="formatCurrency(taxAmount)"></span></div>
                         <template x-if="cardServiceCharge>0">
                             <div class="flex justify-between text-gray-500"><span>Card Service Charge</span><span class="text-gray-900 price tabular" x-text="'+' + formatCurrency(cardServiceCharge)"></span></div>
                         </template>
@@ -1435,33 +1435,71 @@
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <h2 class="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Customer Details</h2>
-                            <button type="button" @click="customer.name='Walk-in Customer'; customer.phone='0000000000';"
+                            <button type="button" @click="customer.name='Walk-in Customer'; customer.phone='0000000000'; matchingCustomers=[]; showCustomerDropdown=false;"
                                 class="text-[10px] font-bold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-2 py-0.5 rounded-md transition-colors">
                                 ⚡ Walk-in Quick Fill
                             </button>
                         </div>
-                        <div class="space-y-2">
+                        <div class="space-y-2 relative">
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Customer Name *</label>
-                                <input type="text" x-model="customer.name" placeholder="Walk-in Customer"
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Customer Name (Optional)</label>
+                                <input type="text" x-model="customer.name" @input.debounce.300ms="searchCustomers($event.target.value)" @focus="if(customer.name && customer.name.length >= 2) searchCustomers(customer.name)"
                                     class="w-full px-3 py-2 rounded-xl text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 focus:border-brand-500 outline-none">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Phone Number *</label>
+                                <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Phone Number (Optional)</label>
                                 <div class="relative">
-                                    <input type="text" x-model="customer.phone" @input="fetchCustomer()" placeholder="e.g. 555-0199"
+                                    <input type="text" x-model="customer.phone" @input.debounce.300ms="searchCustomers($event.target.value)" @focus="if(customer.phone && customer.phone.length >= 2) searchCustomers(customer.phone)"
                                         class="w-full pl-3 pr-8 py-2 rounded-xl text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 focus:border-brand-500 outline-none">
                                     <div class="absolute right-2.5 top-1/2 -translate-y-1/2" x-show="isCustomerLoading">
                                         <div class="spin-loader w-3.5 h-3.5 rounded-full border-2 border-gray-200 border-t-brand-500"></div>
                                     </div>
                                 </div>
                             </div>
+
+                            {{-- Autocomplete Dropdown --}}
+                            <div x-show="showCustomerDropdown && matchingCustomers.length > 0" @click.outside="showCustomerDropdown = false"
+                                class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto z-50">
+                                <template x-for="c in matchingCustomers" :key="c.id">
+                                    <button type="button" @click="selectCustomer(c)"
+                                        class="w-full text-left px-3 py-2 text-xs hover:bg-brand-50 flex items-center justify-between border-b border-gray-100 last:border-0 transition-colors">
+                                        <div>
+                                            <span class="font-bold text-gray-800" x-text="c.name"></span>
+                                            <span class="text-gray-400 ml-1.5" x-text="'(' + c.phone + ')'"></span>
+                                        </div>
+                                        <template x-if="c.wallet_balance > 0">
+                                            <span class="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded" x-text="formatCurrency(c.wallet_balance)"></span>
+                                        </template>
+                                    </button>
+                                </template>
+                            </div>
+
                             <div x-show="serviceType==='delivery'||customer.name">
                                 <label class="block text-[10px] font-bold uppercase tracking-wider mb-1"
                                     :class="serviceType==='delivery' ? 'text-red-500' : 'text-gray-500'"
                                     x-text="serviceType==='delivery' ? 'Delivery Address (Required) *' : 'Address (Optional)'"></label>
                                 <textarea x-model="customer.address" rows="2" placeholder="Street, building, suite..."
                                     class="w-full px-3 py-2 rounded-xl text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 focus:border-brand-500 outline-none resize-none"></textarea>
+                            </div>
+
+                            {{-- Delivery Partner Selection --}}
+                            <div x-show="serviceType==='delivery'" class="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 space-y-1.5">
+                                <label class="block text-[10px] font-bold text-blue-900 uppercase tracking-wider">
+                                    Delivery Partner
+                                </label>
+                                <select x-model="selectedDeliveryPartnerId" @change="recalcCash"
+                                    class="w-full px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-900 bg-white border border-blue-200 focus:border-brand-500 outline-none">
+                                    <option value="">-- Select Delivery Partner --</option>
+                                    <template x-for="dp in deliveryPartners" :key="dp.id">
+                                        <option :value="dp.id" x-text="dp.name + ' (' + dp.commission_percentage + '%)'"></option>
+                                    </template>
+                                </select>
+                                <template x-if="selectedDeliveryPartner">
+                                    <div class="flex justify-between items-center text-xs text-blue-800 pt-1 border-t border-blue-200/60">
+                                        <span>Partner Commission (<span x-text="selectedDeliveryPartner.commission_percentage + '%'"></span>):</span>
+                                        <span class="font-bold tabular" x-text="formatCurrency(deliveryCommissionAmount)"></span>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
@@ -1489,7 +1527,7 @@
                                     <div class="flex gap-2">
                                         <div class="flex-1">
                                             <label class="text-[9px] font-bold text-gray-400 uppercase">Method</label>
-                                            <select :value="p.method" @change="p.method=$event.target.value;p.card_id='';p.offer_id='';p.offers=[];"
+                                            <select :value="p.method" @change="p.method=$event.target.value;p.card_id='';p.card_type_id='';p.offer_id='';p.offers=[];"
                                                 class="w-full px-2 py-1.5 rounded-lg text-xs font-bold text-gray-800 bg-white border border-gray-200 outline-none">
                                                 <template x-for="acc in paymentAccounts" :key="acc.id">
                                                     <option :value="acc.id" x-text="acc.account_name"></option>
@@ -1507,17 +1545,34 @@
                                         </button>
                                     </div>
 
-                                    {{-- Card Selector if Card Account --}}
-                                    <template x-if="cards.some(c=>String(c.settlement_account_id)===String(p.method))">
-                                        <div class="space-y-1.5 p-2 rounded-lg bg-white border border-gray-100">
-                                            <label class="block text-[9px] font-bold text-gray-400 uppercase">Select Terminal Card</label>
-                                            <select x-model="p.card_id" @change="resolveOffersForSplitCard(index,p.card_id,p.amount)"
-                                                class="w-full px-2 py-1 rounded text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 outline-none">
-                                                <option value="">Choose Card...</option>
-                                                <template x-for="card in cards.filter(c=>String(c.settlement_account_id)===String(p.method))" :key="card.id">
-                                                    <option :value="card.id" x-text="card.bank_name+' - '+card.card_network+' ('+card.card_type+')'"></option>
-                                                </template>
-                                            </select>
+                                    {{-- Card Selector & Card Type Selector if Card Account or Card Methods --}}
+                                    <template x-if="cards.some(c=>String(c.settlement_account_id)===String(p.method)) || cardAccountIds.map(String).includes(String(p.method)) || paymentAccounts.some(acc=>String(acc.id)===String(p.method) && (acc.is_card_account || (acc.account_name && acc.account_name.toLowerCase().includes('card'))))">
+                                        <div class="space-y-2 p-2 rounded-lg bg-white border border-gray-100">
+                                            <template x-if="cards.some(c=>String(c.settlement_account_id)===String(p.method))">
+                                                <div>
+                                                    <label class="block text-[9px] font-bold text-gray-400 uppercase mb-0.5">Select Terminal Card</label>
+                                                    <select x-model="p.card_id" @change="resolveOffersForSplitCard(index,p.card_id,p.amount)"
+                                                        class="w-full px-2 py-1 rounded text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 outline-none">
+                                                        <option value="">Choose Card...</option>
+                                                        <template x-for="card in cards.filter(c=>String(c.settlement_account_id)===String(p.method))" :key="card.id">
+                                                            <option :value="card.id" x-text="card.bank_name+' - '+card.card_network+' ('+card.card_type+')'"></option>
+                                                        </template>
+                                                    </select>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="cardTypes.length > 0">
+                                                <div>
+                                                    <label class="block text-[9px] font-bold text-gray-400 uppercase mb-0.5">Select Card Type (POS Commission)</label>
+                                                    <select x-model="p.card_type_id"
+                                                        class="w-full px-2 py-1 rounded text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 outline-none">
+                                                        <option value="">-- Select Card Type --</option>
+                                                        <template x-for="ct in cardTypes" :key="ct.id">
+                                                            <option :value="ct.id" x-text="ct.name + (ct.commission_value > 0 ? (' (' + ct.commission_value + (ct.commission_type === 'percentage' ? '%' : '') + ')') : '')"></option>
+                                                        </template>
+                                                    </select>
+                                                </div>
+                                            </template>
                                         </div>
                                     </template>
                                 </div>
@@ -1637,6 +1692,9 @@ function posApp() {
 
         customer: { name: '', phone: '', address: '' },
         paymentAccounts: {!! json_encode($paymentAccounts ?? []) !!},
+        cardTypes: {!! json_encode($cardTypes ?? []) !!},
+        cardAccountIds: {!! json_encode($cardAccountIds ?? []) !!},
+        selectedCardTypeId: '',
         payments: {},
         useWallet: false,
 
@@ -1679,24 +1737,64 @@ function posApp() {
             }
         },
 
+        taxRate: {{ $companyTaxPercentage ?? 8.0 }},
+        deliveryPartners: {!! json_encode($deliveryPartners ?? []) !!},
+        selectedDeliveryPartnerId: '',
+        matchingCustomers: [],
+        showCustomerDropdown: false,
+
+        get selectedDeliveryPartner() {
+            return this.deliveryPartners.find(dp => dp.id == this.selectedDeliveryPartnerId) || null;
+        },
+
+        get deliveryCommissionAmount() {
+            if (this.serviceType !== 'delivery' || !this.selectedDeliveryPartner) return 0;
+            return parseFloat((this.grandTotal * (parseFloat(this.selectedDeliveryPartner.commission_percentage) / 100)).toFixed(2));
+        },
+
+        async searchCustomers(term) {
+            let q = (term !== undefined ? term : (this.customer.phone || this.customer.name || '')).trim();
+            if (!q || q.length < 2) {
+                this.matchingCustomers = [];
+                this.showCustomerDropdown = false;
+                return;
+            }
+            this.isCustomerLoading = true;
+            try {
+                let res = await fetch('/pos/customer?query=' + encodeURIComponent(q));
+                let data = await res.json();
+                if (data && data.success && data.customers && data.customers.length > 0) {
+                    this.matchingCustomers = data.customers;
+                    this.showCustomerDropdown = true;
+                } else {
+                    this.matchingCustomers = [];
+                    this.showCustomerDropdown = false;
+                }
+            } catch(e) {}
+            this.isCustomerLoading = false;
+        },
+
+        selectCustomer(c) {
+            this.customer = {
+                id: c.id,
+                name: c.name || '',
+                phone: c.phone || '',
+                address: c.address || '',
+                wallet_balance: parseFloat(c.wallet_balance || 0)
+            };
+            this.matchingCustomers = [];
+            this.showCustomerDropdown = false;
+            if (this.useWallet) this.recalcCash();
+        },
+
         async fetchCustomer() {
-            if (this.customer.phone.length >= 7) {
-                this.isCustomerLoading = true;
-                try {
-                    let res = await fetch('/pos/customer?phone=' + encodeURIComponent(this.customer.phone));
-                    let data = await res.json();
-                    if (data && data.success) {
-                        this.customer.name = data.customer.name;
-                        this.customer.wallet_balance = parseFloat(data.customer.wallet_balance);
-                        if (this.useWallet) this.recalcCash();
-                    }
-                } catch(e) {}
-                this.isCustomerLoading = false;
+            if (this.customer.phone && this.customer.phone.length >= 2) {
+                this.searchCustomers(this.customer.phone);
             }
         },
 
         get paymentDifference() { return parseFloat((this.grandTotal - this.totalPaid).toFixed(2)); },
-        get canSubmitOrder() { return !!(this.customer.name && this.customer.phone); },
+        get canSubmitOrder() { return true; },
         get paymentRemaining() { return this.grandTotal - this.totalPaid; },
 
         discountType: 'percent',
@@ -1805,7 +1903,7 @@ function posApp() {
             return manual + coupon + this.cardDiscount;
         },
 
-        get taxAmount() { return Math.max(0, this.cartSubtotal - this.discountAmount) * 0.08; },
+        get taxAmount() { return Math.max(0, this.cartSubtotal - this.discountAmount) * (this.taxRate / 100); },
         get grandTotal() { return Math.max(0, this.cartSubtotal - this.discountAmount + this.taxAmount + this.cardServiceCharge); },
 
         recalcTotal() { /* triggers Alpine computed re-evaluation */ },
@@ -1857,8 +1955,8 @@ function posApp() {
         formatServiceMode(type) {
             if (!type) return 'Counter';
             const t = String(type).toLowerCase().replace(/_/g, '-');
-            if (t === 'dine-in') return 'Dine In';
-            if (t === 'takeaway' || t === 'pickup') return 'Pickup';
+            if (t === 'dine-in') return 'Dine-In';
+            if (t === 'takeaway' || t === 'pickup') return 'Takeaway';
             if (t === 'delivery') return 'Delivery';
             return 'Counter';
         },
@@ -2104,13 +2202,13 @@ function posApp() {
         },
 
         initPayments() {
-            this.payments={}; this.cardDetails={}; this.cardOffers={};
+            this.payments={}; this.cardDetails={}; this.cardOffers={}; this.selectedCardTypeId='';
             let cashAcc = this.paymentAccounts.find(acc => acc.account_name.toLowerCase().includes('cash'));
             let defaultAccId = cashAcc ? cashAcc.id : (this.paymentAccounts[0]?.id||'');
             if (this.paymentAccounts.length>0 && defaultAccId) this.payments[defaultAccId] = this.grandTotal.toFixed(2);
             this.isSplit = true;
             if (defaultAccId) {
-                this.splitPayments = [{ method:defaultAccId, amount:(this.grandTotal-this.walletAmount).toFixed(2), card_id:'', offer_id:'', offers:[] }];
+                this.splitPayments = [{ method:defaultAccId, amount:(this.grandTotal-this.walletAmount).toFixed(2), card_id:'', card_type_id:'', offer_id:'', offers:[] }];
             } else { this.splitPayments=[]; }
             this.paymentAccounts.forEach(acc => {
                 if (this.cards.some(c => String(c.settlement_account_id)===String(acc.id))) this.cardDetails[acc.id]={card_id:'',offer_id:''};
@@ -2142,21 +2240,24 @@ function posApp() {
 
         async confirmOrder() {
             if (this.serviceType==='delivery') {
-                if (!this.customer.name||!this.customer.phone||!this.customer.address) { this.showToast('Name, Phone & Address required for Delivery','error'); return; }
-            } else {
-                if (!this.customer.name||!this.customer.phone) { this.showToast('Name and Phone are required','error'); return; }
+                if (!this.customer.address) { this.showToast('Delivery Address is required for Delivery orders','error'); return; }
             }
             this.isCheckingOut = true;
             const snap = { items:[...this.cartItems], subtotal:this.cartSubtotal, discount:this.discountAmount, discountPct:this.discountValue, tax:this.taxAmount, total:this.grandTotal, customer:{name:this.customer.name,phone:this.customer.phone} };
+            let selectedCardTypeId = this.selectedCardTypeId || null;
+            if (this.isSplit) {
+                const spWithCardType = this.splitPayments.find(p => p.card_type_id);
+                if (spWithCardType) selectedCardTypeId = spWithCardType.card_type_id;
+            }
             const cardDetailsPayload = {};
             if (!this.isSplit) {
                 for (const [accountId,details] of Object.entries(this.cardDetails)) {
-                    if (details.card_id) cardDetailsPayload[accountId]={card_id:details.card_id,offer_id:details.offer_id||null};
+                    if (details.card_id || selectedCardTypeId) cardDetailsPayload[accountId]={card_id:details.card_id||null,offer_id:details.offer_id||null,card_type_id:selectedCardTypeId};
                 }
             }
             const splitPaymentsPayload = this.splitPayments.map(p => {
-                const mapped = {method:p.method,amount:parseFloat(p.amount)||0};
-                if (p.card_id) mapped.card_details = {card_id:p.card_id,offer_id:p.offer_id||null};
+                const mapped = {method:p.method,amount:parseFloat(p.amount)||0,card_type_id:p.card_type_id||null};
+                if (p.card_id || p.card_type_id) mapped.card_details = {card_id:p.card_id||null,card_type_id:p.card_type_id||null,offer_id:p.offer_id||null};
                 return mapped;
             });
             try {
@@ -2168,6 +2269,8 @@ function posApp() {
                         subtotal:this.cartSubtotal, tax_amount:this.taxAmount, coupon_id:this.appliedCoupon?this.appliedCoupon.id:null,
                         note:this.orderNote, total:this.grandTotal, cart:this.cartItems, order_id:this.loadedOrderId,
                         customer_name:this.customer.name, customer_phone:this.customer.phone, billing_address:this.customer.address,
+                        delivery_partner_id: this.serviceType === 'delivery' ? (this.selectedDeliveryPartnerId || null) : null,
+                        card_type_id: selectedCardTypeId || null,
                         payment_details:this.payments, card_details:cardDetailsPayload, use_wallet:this.useWallet,
                         wallet_amount:this.walletAmount, is_split:this.isSplit, split_payments:splitPaymentsPayload
                     })
@@ -2227,7 +2330,7 @@ function posApp() {
         addSplit() {
             let cashAcc = this.paymentAccounts.find(acc => acc.account_name.toLowerCase().includes('cash'));
             let defaultAccId = cashAcc ? cashAcc.id : (this.paymentAccounts[0]?.id||'');
-            this.splitPayments.push({method:defaultAccId,amount:'0.00',card_id:'',offer_id:'',offers:[]});
+            this.splitPayments.push({method:defaultAccId,amount:'0.00',card_id:'',card_type_id:'',offer_id:'',offers:[]});
         },
 
         removeSplit(index) { this.splitPayments.splice(index,1); },

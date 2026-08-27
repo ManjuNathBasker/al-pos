@@ -137,9 +137,10 @@ class CompanyController extends Controller
         $this->authorize('view', $company);
 
         $cardCommissionTax = $company->getCardCommissionTax();
+        $taxPercentage     = $company->getTaxPercentage();
         $currencyConfig    = $company->getCurrencyConfig();
 
-        return view('companies.edit', compact('company', 'cardCommissionTax', 'currencyConfig'));
+        return view('companies.edit', compact('company', 'cardCommissionTax', 'taxPercentage', 'currencyConfig'));
     }
 
     public function update(Request $request, Company $company)
@@ -154,6 +155,7 @@ class CompanyController extends Controller
             'business_type'            => 'required|string|in:retail,restaurant,cafe,bakery,pharmacy,food_court,supermarket,bookstall,boutique',
             'is_active'                => 'nullable|boolean',
             'card_commission_tax'      => 'nullable|numeric|min:0|max:100',
+            'tax_percentage'           => 'nullable|numeric|min:0|max:100',
             'currency_name'            => 'nullable|string|max:100',
             'currency_code'            => 'nullable|string|max:10',
             'currency_symbol'          => 'nullable|string|max:10',
@@ -161,9 +163,11 @@ class CompanyController extends Controller
             'currency_symbol_position' => 'nullable|in:before,after',
         ]);
 
-        // Merge card_commission_tax and currency settings into the settings JSON
+        // Merge card_commission_tax, tax_percentage and currency settings into the settings JSON
         $settings = $company->settings ?? [];
         $settings['card_commission_tax'] = (float) ($request->card_commission_tax ?? 0);
+        $settings['tax_percentage']      = (float) ($request->tax_percentage ?? $settings['card_commission_tax'] ?? 0);
+
         $settings['currency'] = [
             'name'            => $request->currency_name ?: ($settings['currency']['name'] ?? 'Indian Rupee'),
             'code'            => strtoupper(trim($request->currency_code ?: ($settings['currency']['code'] ?? 'INR'))),

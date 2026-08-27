@@ -84,6 +84,27 @@ class Company extends Model
     }
 
     /**
+     * Get the tax percentage from company settings.
+     * Checks tax_percentage, tax_rate, or falls back to card_commission_tax / 8.0.
+     */
+    public function getTaxPercentage(): float
+    {
+        $settings = $this->settings ?? [];
+        if (isset($settings['tax_percentage'])) {
+            return (float) $settings['tax_percentage'];
+        }
+        if (isset($settings['tax_rate'])) {
+            return (float) $settings['tax_rate'];
+        }
+        // If tax_percentage isn't explicitly set, fallback to card_commission_tax if available
+        if (isset($settings['card_commission_tax']) && $settings['card_commission_tax'] > 0) {
+            return (float) $settings['card_commission_tax'];
+        }
+        return 8.0;
+    }
+
+
+    /**
      * Get the company's currency configuration.
      */
     public function getCurrencyConfig(): array

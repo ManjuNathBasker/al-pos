@@ -84,7 +84,16 @@
                         <td class="py-4 px-4 text-sm font-bold font-mono text-[#172033]">{{ $order->order_number }}</td>
                         <td class="py-4 px-4 text-xs text-[#64748B]">{{ $order->created_at->format('M d, Y H:i') }}</td>
                         <td class="py-4 px-4 text-xs font-medium text-[#172033]">{{ $order->customer->name ?? 'Walk-in' }}</td>
-                        <td class="py-4 px-4 text-xs text-[#64748B]">{{ ucfirst($order->service_type) }}</td>
+                        @php
+                            $stKey = $order->service_type ?: ($order->table_id ? 'dine_in' : 'retail');
+                            $stLabel = match ($stKey) {
+                                'dine_in' => 'Dine-In',
+                                'takeaway', 'pickup' => 'Takeaway',
+                                'delivery' => 'Delivery',
+                                default => 'Counter',
+                            };
+                        @endphp
+                        <td class="py-4 px-4 text-xs font-semibold text-[#172033]">{{ $stLabel }}</td>
                         <td class="py-4 px-4">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
                                 @if($order->status === 'paid') bg-emerald-50 text-[#29AB6C] border-emerald-200

@@ -77,31 +77,131 @@
             🍽️ All Items
         </button>
         @foreach($categories as $category)
+            @if($products->filter(fn($p) => (string)$p->category_id === (string)$category->id)->count() > 0)
             <button @click="activeCategory = '{{ $category->id }}'"
-                :class="activeCategory === '{{ $category->id }}' ? 'text-white shadow-md shadow-brand-500/20' : 'bg-white text-gray-600 border border-gray-200/90 hover:bg-gray-100'"
-                :style="activeCategory === '{{ $category->id }}' ? 'background-color: #F5703E;' : ''"
+                :class="String(activeCategory) === String('{{ $category->id }}') ? 'text-white shadow-md shadow-brand-500/20' : 'bg-white text-gray-600 border border-gray-200/90 hover:bg-gray-100'"
+                :style="String(activeCategory) === String('{{ $category->id }}') ? 'background-color: #F5703E;' : ''"
                 class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black transition-all">
                 {{ $category->name }}
             </button>
+            @endif
         @endforeach
+
+        @php
+            $catIds = array_map('strval', $categories->pluck('id')->toArray());
+            $uncatCount = $products->filter(fn($p) => empty($p->category_id) || !in_array((string)$p->category_id, $catIds))->count();
+        @endphp
+        @if($uncatCount > 0)
+            <button @click="activeCategory = 'uncategorized'"
+                :class="activeCategory === 'uncategorized' ? 'text-white shadow-md shadow-brand-500/20' : 'bg-white text-gray-600 border border-gray-200/90 hover:bg-gray-100'"
+                :style="activeCategory === 'uncategorized' ? 'background-color: #F5703E;' : ''"
+                class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black transition-all">
+                📦 General Items
+            </button>
+        @endif
     </div>
 
     {{-- ════════════════════════════════════════════════════════════
          MENU PRODUCTS GRID
     ════════════════════════════════════════════════════════════ --}}
     <main class="px-4 sm:px-6 py-6 space-y-8 max-w-7xl mx-auto">
+        @php
+            $hasDisplayedAnyProduct = false;
+        @endphp
+
+        {{-- Categories with assigned products --}}
         @foreach($categories as $category)
-            <section x-show="activeCategory === 'all' || activeCategory === '{{ $category->id }}'" class="space-y-4">
+            @php
+                $catProducts = $products->filter(fn($p) => (string)$p->category_id === (string)$category->id);
+            @endphp
+            @if($catProducts->count() > 0)
+                @php $hasDisplayedAnyProduct = true; @endphp
+                <section x-show="activeCategory === 'all' || String(activeCategory) === String('{{ $category->id }}')" class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full" style="background-color: #F5703E;"></span>
+                            {{ $category->name }}
+                        </h2>
+                        <span class="text-xs font-bold text-gray-400">{{ $catProducts->count() }} items</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        @foreach($catProducts as $product)
+                            <div class="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80 flex flex-col justify-between hover:shadow-md transition-all">
+                                <div class="flex gap-3.5">
+                                    {{-- Product Thumbnail --}}
+                                    <div class="w-20 h-20 bg-gray-100 rounded-2xl flex-shrink-0 overflow-hidden relative border border-gray-100">
+                                        @if($product->image)
+                                            <img src="{{ str_starts_with($product->image, 'http') ? $product->image : asset('storage/' . $product->image) }}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/400x400?text=Food'">
+                                        @else
+                                            <div class="w-full h-full flex items-center justify-center text-gray-300">
+                                                <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    {{-- Product Info --}}
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="font-bold text-gray-900 text-sm leading-snug line-clamp-1">{{ $product->name }}</h3>
+                                        <p class="text-xs text-gray-400 mt-0.5 line-clamp-2">{{ $product->description ?: 'Delicious freshly prepared dish' }}</p>
+                                        <span class="text-xs font-bold text-gray-400 mt-1 block">SKU: {{ $product->sku ?: 'ITM-'.$product->id }}</span>
+                                    </div>
+                                </div>
+
+                                {{-- Bottom Price & Stepper Action --}}
+                                <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
+                                    <span class="font-black text-base text-gray-900">@currency($product->price)</span>
+
+                                    <div class="flex items-center gap-2">
+                                        <template x-if="isInCart({{ $product->id }})">
+                                            <div class="flex items-center gap-2 bg-orange-50 border border-brand-200 rounded-xl px-2 py-1">
+                                                <button @click="updateQty({{ $product->id }}, -1)"
+                                                        class="w-7 h-7 flex items-center justify-center bg-white rounded-lg text-brand-700 font-black text-sm shadow-xs hover:bg-orange-100 transition-colors">-</button>
+                                                <span class="text-xs font-black text-brand-900 px-1" x-text="getQty({{ $product->id }})"></span>
+                                                <button @click="updateQty({{ $product->id }}, 1)"
+                                                        class="w-7 h-7 flex items-center justify-center bg-white rounded-lg text-brand-700 font-black text-sm shadow-xs hover:bg-orange-100 transition-colors">+</button>
+                                            </div>
+                                        </template>
+                                        <template x-if="!isInCart({{ $product->id }})">
+                                            <button @click="addToCart({ id: {{ $product->id }}, name: '{{ $product->name }}', price: {{ $product->price }} })"
+                                                    class="px-3.5 py-1.5 text-white rounded-xl flex items-center gap-1.5 text-xs font-black shadow-md shadow-brand-500/20 active:scale-95 transition-all"
+                                                    style="background-color: #F5703E;">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                </svg>
+                                                <span>Add</span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+        @endforeach
+
+        {{-- Uncategorized Products Section --}}
+        @php
+            $uncategorizedProducts = $products->filter(function($p) use ($catIds) {
+                return empty($p->category_id) || !in_array((string)$p->category_id, $catIds);
+            });
+        @endphp
+        @if($uncategorizedProducts->count() > 0)
+            @php $hasDisplayedAnyProduct = true; @endphp
+            <section x-show="activeCategory === 'all' || activeCategory === 'uncategorized'" class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full" style="background-color: #F5703E;"></span>
-                        {{ $category->name }}
+                        General Items
                     </h2>
-                    <span class="text-xs font-bold text-gray-400">{{ $products->where('category_id', $category->id)->count() }} items</span>
+                    <span class="text-xs font-bold text-gray-400">{{ $uncategorizedProducts->count() }} items</span>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    @foreach($products->where('category_id', $category->id) as $product)
+                    @foreach($uncategorizedProducts as $product)
                         <div class="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80 flex flex-col justify-between hover:shadow-md transition-all">
                             <div class="flex gap-3.5">
                                 {{-- Product Thumbnail --}}
@@ -155,7 +255,83 @@
                     @endforeach
                 </div>
             </section>
-        @endforeach
+        @endif
+
+        {{-- Fallback: If no products were displayed but products exist --}}
+        @if(!$hasDisplayedAnyProduct && $products->count() > 0)
+            <section class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full" style="background-color: #F5703E;"></span>
+                        Menu Items
+                    </h2>
+                    <span class="text-xs font-bold text-gray-400">{{ $products->count() }} items</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    @foreach($products as $product)
+                        <div class="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80 flex flex-col justify-between hover:shadow-md transition-all">
+                            <div class="flex gap-3.5">
+                                {{-- Product Thumbnail --}}
+                                <div class="w-20 h-20 bg-gray-100 rounded-2xl flex-shrink-0 overflow-hidden relative border border-gray-100">
+                                    @if($product->image)
+                                        <img src="{{ str_starts_with($product->image, 'http') ? $product->image : asset('storage/' . $product->image) }}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/400x400?text=Food'">
+                                    @else
+                                        <div class="w-full h-full flex items-center justify-center text-gray-300">
+                                            <svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                {{-- Product Info --}}
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-bold text-gray-900 text-sm leading-snug line-clamp-1">{{ $product->name }}</h3>
+                                    <p class="text-xs text-gray-400 mt-0.5 line-clamp-2">{{ $product->description ?: 'Delicious freshly prepared dish' }}</p>
+                                    <span class="text-xs font-bold text-gray-400 mt-1 block">SKU: {{ $product->sku ?: 'ITM-'.$product->id }}</span>
+                                </div>
+                            </div>
+
+                            {{-- Bottom Price & Stepper Action --}}
+                            <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
+                                <span class="font-black text-base text-gray-900">@currency($product->price)</span>
+
+                                <div class="flex items-center gap-2">
+                                    <template x-if="isInCart({{ $product->id }})">
+                                        <div class="flex items-center gap-2 bg-orange-50 border border-brand-200 rounded-xl px-2 py-1">
+                                            <button @click="updateQty({{ $product->id }}, -1)"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white rounded-lg text-brand-700 font-black text-sm shadow-xs hover:bg-orange-100 transition-colors">-</button>
+                                            <span class="text-xs font-black text-brand-900 px-1" x-text="getQty({{ $product->id }})"></span>
+                                            <button @click="updateQty({{ $product->id }}, 1)"
+                                                    class="w-7 h-7 flex items-center justify-center bg-white rounded-lg text-brand-700 font-black text-sm shadow-xs hover:bg-orange-100 transition-colors">+</button>
+                                        </div>
+                                    </template>
+                                    <template x-if="!isInCart({{ $product->id }})">
+                                        <button @click="addToCart({ id: {{ $product->id }}, name: '{{ $product->name }}', price: {{ $product->price }} })"
+                                                class="px-3.5 py-1.5 text-white rounded-xl flex items-center gap-1.5 text-xs font-black shadow-md shadow-brand-500/20 active:scale-95 transition-all"
+                                                style="background-color: #F5703E;">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            <span>Add</span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @elseif($products->isEmpty())
+            <div class="bg-white rounded-3xl p-12 text-center border border-gray-200/80 shadow-sm space-y-3">
+                <div class="w-16 h-16 bg-orange-50 text-brand-500 rounded-2xl flex items-center justify-center mx-auto text-2xl border border-orange-100">
+                    🍽️
+                </div>
+                <h3 class="text-base font-black text-gray-900">No Active Products Found</h3>
+                <p class="text-xs text-gray-400 max-w-sm mx-auto font-medium">There are currently no active products in your menu. Please add or activate products under Admin → Products.</p>
+            </div>
+        @endif
     </main>
 
     {{-- ════════════════════════════════════════════════════════════
@@ -625,8 +801,8 @@
                 init() {
                     setInterval(() => this.refreshStatus(), 10000);
                 }
-            }));
-        });
+            };
+        }
 
         function printKOTSlip(data) {
             const win = window.open('', '_blank', 'width=400,height=600');
