@@ -36,7 +36,7 @@
                     <div class="flex items-center gap-2 mt-1">
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ $ticket->ticket_number }}</span>
                         @if($ticket->order)
-                            @if($ticket->order->status === 'paid' || $ticket->order->payment_status === 'paid')
+                            @if(in_array($ticket->order->status, ['paid', 'closed']) || $ticket->order->payment_status === 'paid')
                                 <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-full border border-emerald-300 inline-flex items-center gap-1" title="Payment Completed">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> PAID
                                 </span>

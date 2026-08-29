@@ -596,30 +596,75 @@
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden border border-gray-100">
         <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
             <div>
-                <h2 class="text-lg font-black text-gray-900">Active Dine-In Tables</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Select a table with an active session to load its cart</p>
+                <h2 class="text-lg font-black text-gray-900 flex items-center gap-2">
+                    <span>🪑</span>
+                    <span>Dine-In Tables</span>
+                </h2>
+                <p class="text-xs text-gray-400 mt-0.5">Select an available table to start a new order or an active table to continue</p>
             </div>
             <button @click="showTablesModal=false" class="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
-        <div class="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto thin-scroll">
+        <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[65vh] overflow-y-auto thin-scroll">
             <template x-for="table in activeTablesList" :key="table.id">
-                <button @click="loadTableOrder(table)"
-                    class="p-4 bg-white border-2 border-gray-100 rounded-2xl text-left hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/10 transition-all active:scale-95 group">
-                    <div class="w-10 h-10 rounded-xl mb-2.5 flex items-center justify-center bg-brand-50 text-brand-500 group-hover:scale-105 transition-transform">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                <div @click="selectTable(table)"
+                     class="p-4 bg-white border-2 rounded-2xl cursor-pointer text-left transition-all duration-200 hover:shadow-lg flex flex-col justify-between group"
+                     :class="{
+                         'border-emerald-300 bg-emerald-50/20 hover:border-emerald-500': !table.active_order && (table.status === 'available' || !table.status),
+                         'border-brand-300 bg-orange-50/20 hover:border-brand-500': table.active_order || table.status === 'occupied',
+                         'border-purple-300 bg-purple-50/20 hover:border-purple-500': table.status === 'reserved',
+                         'border-gray-300 bg-gray-50/40 hover:border-gray-400': table.status === 'cleaning'
+                     }">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center font-black"
+                             :class="{
+                                 'bg-emerald-100 text-emerald-700': !table.active_order && (table.status === 'available' || !table.status),
+                                 'bg-orange-100 text-brand-700': table.active_order || table.status === 'occupied',
+                                 'bg-purple-100 text-purple-700': table.status === 'reserved',
+                                 'bg-gray-200 text-gray-700': table.status === 'cleaning'
+                             }">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        </div>
+                        <template x-if="table.active_order || table.status === 'occupied'">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 text-brand-700 border border-brand-300 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span> Occupied
+                            </span>
+                        </template>
+                        <template x-if="!table.active_order && (table.status === 'available' || !table.status)">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Available
+                            </span>
+                        </template>
                     </div>
-                    <div class="text-sm font-bold text-gray-900 truncate" x-text="table.name"></div>
-                    <div class="text-[10px] text-gray-400 mb-2 truncate" x-text="table.section ? table.section.name : 'Main Dining Area'"></div>
-                    <div class="text-sm font-black price text-brand-500" x-text="formatCurrency(table.active_order.total_amount)"></div>
-                </button>
+
+                    <div>
+                        <h4 class="text-base font-black text-gray-900" x-text="table.name"></h4>
+                        <p class="text-xs text-gray-400 font-medium" x-text="(table.section ? table.section.name : 'Main Area') + ' • ' + (table.capacity || 2) + ' seats'"></p>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-gray-100/80 flex items-center justify-between">
+                        <template x-if="table.active_order">
+                            <div>
+                                <span class="block text-[11px] font-bold text-gray-500" x-text="'Order: ' + table.active_order.order_number"></span>
+                                <span class="text-sm font-black text-brand-600" x-text="formatCurrency(table.active_order.total_amount)"></span>
+                            </div>
+                        </template>
+                        <template x-if="!table.active_order">
+                            <span class="text-xs text-gray-400 font-medium">No active order</span>
+                        </template>
+
+                        <span class="text-xs font-black text-brand-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                            <span x-text="table.active_order || table.status === 'occupied' ? 'Continue Order →' : 'Start Order →'"></span>
+                        </span>
+                    </div>
+                </div>
             </template>
             <template x-if="activeTablesList.length===0">
                 <div class="col-span-full py-16 text-center text-gray-400">
                     <div class="text-4xl mb-2">🍽️</div>
-                    <p class="text-sm font-bold text-gray-600">No active tables found</p>
-                    <p class="text-xs text-gray-400 mt-1">All tables are currently open and available</p>
+                    <p class="text-sm font-bold text-gray-600">No tables configured</p>
+                    <p class="text-xs text-gray-400 mt-1">Please add restaurant tables in Table Settings</p>
                 </div>
             </template>
         </div>
@@ -1359,7 +1404,7 @@
                 class="btn-checkout-primary checkout-btn w-full py-4 text-sm flex items-center justify-center gap-2.5">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 <span x-show="cartItems.length===0">Add items to order</span>
-                <span x-show="cartItems.length>0" x-text="'Charge ' + formatCurrency(grandTotal) + ' →'"></span>
+                <span x-show="cartItems.length>0" x-text="serviceType === 'dine_in' ? '💳 Pay & Settle Bill' : ('Charge ' + formatCurrency(grandTotal) + ' →')"></span>
             </button>
         </div>
     </aside>
@@ -2183,9 +2228,36 @@ function posApp() {
             } catch(e) { this.showToast('Failed to fetch tables','error'); }
         },
 
+        selectTable(table) {
+            if (!table) return;
+            if (table.active_order || table.status === 'occupied') {
+                this.loadTableOrder(table);
+            } else {
+                this.startNewTableOrder(table);
+            }
+        },
+
+        startNewTableOrder(table) {
+            if (!table) return;
+            this.loadedTableId = table.id;
+            this.loadedTableName = table.name;
+            this.loadedOrderId = null;
+            this.serviceType = 'dine_in';
+            this.cart = {};
+            this.customer = { name: '', phone: '', address: '' };
+            this.discountValue = 0;
+            this.appliedCoupon = null;
+            this.couponCode = '';
+            this.orderNote = '';
+            this.showTablesModal = false;
+            this.syncToBackend('clear', {});
+            this.showToast('Selected ' + table.name + ' - Start adding items');
+        },
+
         async loadTableOrder(table) {
-            if (!table || !table.active_order) {
-                this.showToast('No active order for this table', 'error');
+            if (!table) return;
+            if (!table.active_order) {
+                this.startNewTableOrder(table);
                 return;
             }
             const ord = {
@@ -2238,6 +2310,61 @@ function posApp() {
             this.useWallet = false;
         },
 
+        async placeDineInTableOrder() {
+            if (!this.loadedTableId) {
+                this.showToast('Please select a Dine-In table first', 'error');
+                this.fetchActiveTables();
+                return;
+            }
+            if (this.cartItems.length === 0) {
+                this.showToast('Your cart is empty!', 'error');
+                return;
+            }
+            this.isCheckingOut = true;
+            try {
+                const cartPayload = {};
+                this.cartItems.forEach(item => {
+                    cartPayload[String(item.id)] = {
+                        id: item.id,
+                        name: item.name,
+                        price: parseFloat(item.price),
+                        qty: parseInt(item.qty)
+                    };
+                });
+
+                const res = await fetch('{{ route("pos.save-table-order") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        table_id: this.loadedTableId,
+                        order_id: this.loadedOrderId,
+                        customer_name: this.customer.name,
+                        customer_phone: this.customer.phone,
+                        cart: cartPayload
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showToast('Order #' + (data.order_id || '') + ' sent to kitchen KOT!');
+                    this.cart = {};
+                    this.loadedOrderId = data.order_db_id || this.loadedOrderId;
+                    this.syncToBackend('clear', {});
+                    await this.fetchActiveOrders();
+                    await this.fetchActiveTables();
+                } else {
+                    this.showToast(data.message || 'Failed to save table order', 'error');
+                }
+            } catch(e) {
+                this.showToast('Failed to connect to server', 'error');
+            } finally {
+                this.isCheckingOut = false;
+            }
+        },
+
         async confirmOrder() {
             if (this.serviceType==='delivery') {
                 if (!this.customer.address) { this.showToast('Delivery Address is required for Delivery orders','error'); return; }
@@ -2265,7 +2392,7 @@ function posApp() {
                     method:'POST',
                     headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content,'Accept':'application/json'},
                     body:JSON.stringify({
-                        service_type:this.serviceType, discount_percent:this.discountValue, discount_type:this.discountType,
+                        service_type:this.serviceType, table_id:this.loadedTableId, discount_percent:this.discountValue, discount_type:this.discountType,
                         subtotal:this.cartSubtotal, tax_amount:this.taxAmount, coupon_id:this.appliedCoupon?this.appliedCoupon.id:null,
                         note:this.orderNote, total:this.grandTotal, cart:this.cartItems, order_id:this.loadedOrderId,
                         customer_name:this.customer.name, customer_phone:this.customer.phone, billing_address:this.customer.address,

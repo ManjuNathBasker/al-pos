@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\RestaurantTable;
 use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -179,12 +180,12 @@ class POSController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  GET /pos/active-tables — list tables with active orders
+    //  GET /pos/active-tables — list all tables with active orders
     // ─────────────────────────────────────────────────────────────
     public function activeTables()
     {
         $companyId = session('company_id');
-        $query = \App\Models\RestaurantTable::where('status', 'occupied');
+        $query = \App\Models\RestaurantTable::query();
 
         if ($companyId) {
             $query->where('company_id', $companyId);
@@ -193,12 +194,131 @@ class POSController extends Controller
         $tables = $query->with(['activeOrder' => function($q) {
                 $q->with('items', 'customer');
             }, 'section'])
+            ->orderBy('name')
             ->get();
 
         return response()->json([
             'success' => true,
             'tables'  => $tables
         ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /pos/save-table-order — Save active table order & send KOT
+    // ─────────────────────────────────────────────────────────────
+    public function saveTableOrder(Request $request)
+    {
+        $request->validate([
+            'table_id' => 'required|exists:restaurant_tables,id',
+            'cart'     => 'required|array|min:1',
+        ]);
+
+        $companyId = session('company_id');
+        $table = RestaurantTable::findOrFail($request->table_id);
+
+        // Resolve customer if provided
+        $customerId = null;
+        if (!empty($request->customer_name) || !empty($request->customer_phone)) {
+            $phone = !empty($request->customer_phone) ? $request->customer_phone : '0000000000';
+            $customer = Customer::firstOrCreate(
+                ['phone' => $phone, 'company_id' => $companyId],
+                ['name' => $request->customer_name ?: 'Dine-in Customer', 'wallet_balance' => 0]
+            );
+            $customerId = $customer->id;
+        }
+
+        DB::beginTransaction();
+        try {
+            $order = null;
+            if ($request->order_id) {
+                $order = Order::find($request->order_id);
+            }
+            if (!$order) {
+                $order = Order::where('table_id', $table->id)
+                    ->whereNotIn('status', ['completed', 'closed', 'cancelled'])
+                    ->first();
+            }
+
+            $cart = $request->cart;
+            $subtotal = 0;
+            foreach ($cart as $item) {
+                $subtotal += ($item['price'] * $item['qty']);
+            }
+            $taxAmount = $subtotal * 0.18;
+            $totalAmount = $subtotal + $taxAmount;
+
+            if ($order) {
+                $order->update([
+                    'table_id'       => $table->id,
+                    'service_type'   => 'dine_in',
+                    'customer_id'    => $customerId ?: $order->customer_id,
+                    'user_id'        => auth()->id(),
+                    'waiter_id'      => auth()->id(),
+                    'subtotal'       => $subtotal,
+                    'tax_amount'     => $taxAmount,
+                    'total_amount'   => $totalAmount,
+                    'kitchen_status' => 'pending',
+                    'status'         => 'pending',
+                ]);
+                $order->items()->delete();
+            } else {
+                $maxId = (Order::withTrashed()->where('company_id', $companyId)->max('id') ?? 0) + 1;
+                $orderNumber = 'ORD-' . str_pad($maxId, 5, '0', STR_PAD_LEFT);
+
+                $order = Order::create([
+                    'company_id'     => $companyId,
+                    'order_number'   => $orderNumber,
+                    'service_type'   => 'dine_in',
+                    'table_id'       => $table->id,
+                    'customer_id'    => $customerId,
+                    'user_id'        => auth()->id(),
+                    'waiter_id'      => auth()->id(),
+                    'subtotal'       => $subtotal,
+                    'tax_amount'     => $taxAmount,
+                    'total_amount'   => $totalAmount,
+                    'status'         => 'pending',
+                    'kitchen_status' => 'pending',
+                ]);
+            }
+
+            foreach ($cart as $item) {
+                $product = Product::find($item['id']);
+                OrderItem::create([
+                    'company_id'     => $companyId,
+                    'order_id'       => $order->id,
+                    'product_id'     => $item['id'],
+                    'product_name'   => $item['name'],
+                    'unit_price'     => $item['price'],
+                    'quantity'       => $item['qty'],
+                    'subtotal'       => $item['price'] * $item['qty'],
+                    'kitchen_status' => 'pending',
+                ]);
+            }
+
+            // Update table status to occupied
+            $table->update([
+                'status'         => 'occupied',
+                'customer_name'  => $request->customer_name ?: null,
+                'customer_phone' => !empty($request->customer_phone) ? $request->customer_phone : null,
+            ]);
+
+            // Generate KOT tickets for Kitchen
+            $tickets = app(\App\Services\KOTService::class)->generateTickets($order);
+
+            DB::commit();
+
+            return response()->json([
+                'success'      => true,
+                'message'      => 'Order saved and sent to kitchen KOT!',
+                'order_db_id'  => $order->id,
+                'order_id'     => $order->order_number ?? ('#' . str_pad($order->id, 5, '0', STR_PAD_LEFT)),
+                'table_id'     => $table->id,
+                'table_name'   => $table->name,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -596,6 +716,8 @@ class POSController extends Controller
             // Create or Update Order
             $orderData = [
                 'user_id'          => auth()->id(),
+                'waiter_id'        => auth()->id(),
+                'table_id'         => $request->table_id ?: null,
                 'customer_id'      => $customer->id,
                 'service_type'     => $resolvedServiceType,
                 'delivery_status'  => ($resolvedServiceType === 'delivery') ? 'pending' : null,
@@ -712,6 +834,7 @@ class POSController extends Controller
                         ]);
                     } else {
                         OrderItem::create([
+                            'company_id'   => $order->company_id,
                             'order_id'     => $order->id,
                             'product_id'   => $item['id'],
                             'product_name' => $item['name'],
@@ -724,6 +847,7 @@ class POSController extends Controller
             } else {
                 foreach ($cart as $item) {
                     OrderItem::create([
+                        'company_id'   => $order->company_id,
                         'order_id'     => $order->id,
                         'product_id'   => $item['id'],
                         'product_name' => $item['name'],
@@ -742,32 +866,42 @@ class POSController extends Controller
                 $company->isModuleEnabled('restaurant_mode')
             );
 
-            if ($isKOTEnabled) {
-                // Ensure a KitchenTicket exists for this order if not already created
-                $existingTicket = \App\Models\KitchenTicket::where('order_id', $order->id)
-                    ->where('status', '!=', 'cancelled')
-                    ->first();
+            if ($isKOTEnabled && $order->items()->count() > 0) {
+                app(\App\Services\KOTService::class)->generateTickets($order);
+            }
 
-                if (!$existingTicket && $order->items()->count() > 0) {
-                    $ticket = \App\Models\KitchenTicket::create([
-                        'order_id'      => $order->id,
-                        'company_id'    => $company->id,
-                        'ticket_number' => 'KOT-' . str_pad($order->id, 4, '0', STR_PAD_LEFT) . '-' . rand(10, 99),
-                        'status'        => 'pending',
-                    ]);
-
-                    foreach ($order->items as $orderItem) {
-                        \App\Models\KitchenTicketItem::create([
-                            'kitchen_ticket_id' => $ticket->id,
-                            'order_item_id'     => $orderItem->id,
-                            'product_name'      => $orderItem->product_name,
-                            'quantity'          => $orderItem->quantity,
-                            'status'            => 'pending',
+            // Update table status and order status based on Dine-In lifecycle
+            $tableIdToRelease = $order->table_id ?: $request->table_id;
+            if ($tableIdToRelease && $resolvedServiceType === 'dine_in') {
+                $tableModel = RestaurantTable::find($tableIdToRelease);
+                if ($request->is_settlement || $request->settle_payment) {
+                    if ($tableModel) {
+                        $tableModel->update([
+                            'status'         => 'available',
+                            'customer_name'  => null,
+                            'customer_phone' => null,
                         ]);
                     }
-
-                    event(new \App\Events\NewKOTGenerated($ticket));
+                    $order->update([
+                        'status'         => 'closed',
+                        'kitchen_status' => 'served',
+                    ]);
+                } else {
+                    if ($tableModel) {
+                        $tableModel->update([
+                            'status'         => 'occupied',
+                            'customer_name'  => $request->customer_name ?: $customer->name,
+                            'customer_phone' => $request->customer_phone ?: $customer->phone,
+                        ]);
+                    }
+                    $order->update([
+                        'status'         => 'paid',
+                    ]);
                 }
+            } else {
+                $order->update([
+                    'status'         => 'paid',
+                ]);
             }
 
             // Wallet Transactions
@@ -878,9 +1012,11 @@ class POSController extends Controller
             DB::commit();
 
             return response()->json([
-                'success'  => true,
-                'order_id' => '#' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
-                'total'    => $request->total,
+                'success'      => true,
+                'order_db_id'  => $order->id,
+                'order_number' => $order->order_number,
+                'order_id'     => '#' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
+                'total'        => $request->total,
                 'customer' => [
                     'name' => $customer->name,
                     'wallet_balance' => $customer->wallet_balance
