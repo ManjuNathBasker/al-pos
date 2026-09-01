@@ -86,11 +86,7 @@ class GuestOrderController extends Controller
                 ];
             }
 
-            $order->update([
-                'subtotal' => $orderSubtotal,
-                'total_amount' => $orderSubtotal * 1.08, // Simple tax for demo
-                'tax_amount' => $orderSubtotal * 0.08,
-            ]);
+            $order->recalculateTotals();
 
             // CREATE KITCHEN TICKET
             $ticket = KitchenTicket::create([
@@ -152,8 +148,12 @@ class GuestOrderController extends Controller
         $this->verifyQrOrdering($table);
         $order = $item->order;
 
-        if ($order->table_id !== $table->id) abort(403);
+        if (!$order || $order->table_id !== $table->id) abort(403);
         
+        if (!$order->isUnpaid()) {
+            return response()->json(['success' => false, 'message' => 'Item cancellation is only allowed on unpaid orders.'], 403);
+        }
+
         // Only allow removal if not yet accepted in kitchen
         if ($order->kitchen_status !== 'pending') {
             return response()->json(['success' => false, 'message' => 'Order already in preparation and cannot be modified.'], 422);
@@ -161,19 +161,29 @@ class GuestOrderController extends Controller
 
         DB::beginTransaction();
         try {
-            $itemSubtotal = $item->subtotal;
+            // Restore stock if it was deducted
+            $inventoryService = new \App\Services\InventoryService();
+            $inventoryService->restoreStockFromOrderItem($item);
+
+            // Clean up KOT ticket item
+            \App\Models\KitchenTicketItem::where('order_item_id', $item->id)->delete();
+            foreach ($order->kitchenTickets as $ticket) {
+                if ($ticket->items()->count() === 0) {
+                    $ticket->update(['status' => 'cancelled']);
+                }
+            }
+
             $item->delete();
 
-            $newSubtotal = $order->subtotal - $itemSubtotal;
-            $order->update([
-                'subtotal' => $newSubtotal,
-                'total_amount' => $newSubtotal * 1.08,
-                'tax_amount' => $newSubtotal * 0.08,
-            ]);
+            // Recalculate order totals centrally
+            $order->recalculateTotals();
 
-            // If no items left, we could optionally delete order or keep it
+            // If no items left, cancel order and free table
             if ($order->items()->count() === 0) {
-                $order->delete();
+                $order->update([
+                    'status' => 'cancelled',
+                    'kitchen_status' => 'none',
+                ]);
                 $table->update(['status' => 'available']);
             }
 

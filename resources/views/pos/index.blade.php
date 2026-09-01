@@ -654,9 +654,17 @@
                             <span class="text-xs text-gray-400 font-medium">No active order</span>
                         </template>
 
-                        <span class="text-xs font-black text-brand-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                            <span x-text="table.active_order || table.status === 'occupied' ? 'Continue Order →' : 'Start Order →'"></span>
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <template x-if="table.active_order || table.status === 'occupied'">
+                                <button @click.stop="completePOSTableOrder(table)" type="button"
+                                        class="px-2.5 py-1 text-xs font-black bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg shadow-sm transition-all flex items-center gap-1">
+                                    <span>✓ Complete</span>
+                                </button>
+                            </template>
+                            <span class="text-xs font-black text-brand-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                <span x-text="table.active_order || table.status === 'occupied' ? 'Continue Order →' : 'Start Order →'"></span>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </template>
@@ -2226,6 +2234,34 @@ function posApp() {
                 const data = await res.json();
                 if (data.success) this.activeTablesList = data.tables;
             } catch(e) { this.showToast('Failed to fetch tables','error'); }
+        },
+
+        async completePOSTableOrder(table) {
+            if (!table) return;
+            if (!confirm('Are you sure you want to mark ' + table.name + ' order as completed and free the table?')) return;
+            try {
+                const res = await fetch('/pos/complete-table-order/' + table.id, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    this.showToast(data.message || 'Order completed successfully');
+                    if (this.loadedTableId === table.id) {
+                        this.resetFilters();
+                    }
+                    await this.fetchActiveTables();
+                    await this.fetchActiveOrders();
+                } else {
+                    this.showToast(data.message || 'Failed to complete order', 'error');
+                }
+            } catch(e) {
+                this.showToast('Failed to complete order', 'error');
+            }
         },
 
         selectTable(table) {

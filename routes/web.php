@@ -73,6 +73,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/pos/save-table-order', [POSController::class, 'saveTableOrder'])->name('pos.save-table-order');
         Route::post('/pos/load-order', [POSController::class, 'loadOrder'])->name('pos.load-order');
         Route::post('/pos/checkout', [POSController::class, 'checkout'])->name('pos.checkout');
+        Route::post('/pos/complete-table-order/{table}', [POSController::class, 'completeTableOrder'])->name('pos.complete-table-order');
 
         // Register Sessions (Shift Management)
         Route::post('/register-sessions/open', [\App\Http\Controllers\RegisterSessionController::class, 'store'])->name('register-sessions.open');
@@ -90,6 +91,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/customers/{customer}/wallet/adjust', [CustomerController::class, 'adjustWallet'])->name('customers.wallet.adjust');
     Route::resource('customers', CustomerController::class)->middleware('can:view customers');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'cancelItem'])->name('orders.items.cancel');
     Route::resource('orders', OrderController::class)->middleware('can:view orders');
     Route::resource('coupons', CouponController::class)->middleware('can:view coupons');
     Route::get('/register-sessions', [\App\Http\Controllers\RegisterSessionController::class, 'index'])->name('register-sessions.index');
@@ -117,6 +119,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
         Route::post('/waiter/order/{table}/complete', [WaiterController::class, 'completeOrder'])->name('waiter.order.complete');
         Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
+        Route::post('/waiter/order/{table}/item/{item}/quantity', [WaiterController::class, 'updateItemQuantity'])->name('waiter.order.update-quantity');
         Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
     });
 

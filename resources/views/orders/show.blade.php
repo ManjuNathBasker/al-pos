@@ -142,6 +142,9 @@
                                 <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase text-center">Qty</th>
                                 <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase text-right">Price</th>
                                 <th class="py-3 px-6 text-xs font-semibold text-[#64748B] uppercase text-right">Subtotal</th>
+                                @if($order->isUnpaid())
+                                <th class="py-3 px-4 text-xs font-semibold text-[#64748B] uppercase text-center">Action</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E5E7EB] text-sm">
@@ -162,6 +165,17 @@
                                 <td class="py-4 px-6 text-right font-mono font-bold text-[#172033]">
                                     @currency($item->subtotal, $order)
                                 </td>
+                                @if($order->isUnpaid())
+                                <td class="py-4 px-4 text-center">
+                                    <form action="{{ route('orders.items.cancel', [$order->id, $item->id]) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this item?');" class="inline-block">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                            Cancel Item
+                                        </button>
+                                    </form>
+                                </td>
+                                @endif
                             </tr>
                             @endforeach
                         </tbody>
@@ -218,14 +232,33 @@
             @if($serviceType === 'dine_in' || $order->table || $order->waiter)
             <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-[#E5E7EB] bg-amber-50/50 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-amber-900">🪑 Dining Details</h3>
-                    <span class="text-xs font-bold text-amber-700 uppercase">Dine-In Order</span>
+                    <h3 class="text-sm font-semibold text-amber-900">🪑 Dining & Table Details</h3>
+                    <span class="text-xs font-bold text-amber-700 uppercase">Dine-In</span>
                 </div>
                 <div class="p-6 space-y-3 text-sm">
                     @if($order->table)
                     <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <span class="text-xs text-[#64748B]">Table</span>
-                        <span class="font-bold text-[#172033]">{{ $order->table->name }} {{ $order->table->section ? '('.$order->table->section->name.')' : '' }}</span>
+                        <span class="text-xs text-[#64748B]">Table Name</span>
+                        <span class="font-bold text-[#172033]">{{ $order->table->name }}</span>
+                    </div>
+                    @if($order->table->section)
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span class="text-xs text-[#64748B]">Floor Section</span>
+                        <span class="font-semibold text-[#172033]">{{ $order->table->section->name }}</span>
+                    </div>
+                    @endif
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span class="text-xs text-[#64748B]">Capacity</span>
+                        <span class="font-mono font-semibold text-[#172033]">{{ $order->table->capacity }} Seats</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span class="text-xs text-[#64748B]">Table Status</span>
+                        <span class="text-xs font-bold uppercase px-2 py-0.5 rounded
+                            @if($order->table->status === 'available') bg-emerald-50 text-emerald-700 border border-emerald-200
+                            @elseif($order->table->status === 'occupied') bg-orange-50 text-orange-700 border border-orange-200
+                            @else bg-gray-100 text-gray-700 border border-gray-200 @endif">
+                            {{ $order->table->status }}
+                        </span>
                     </div>
                     @endif
                     @if($order->waiter)
@@ -234,6 +267,49 @@
                         <span class="font-semibold text-[#172033]">{{ $order->waiter->name }}</span>
                     </div>
                     @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- Kitchen Tickets (KOT) History Card --}}
+            @if($order->kitchenTickets && $order->kitchenTickets->count() > 0)
+            <div class="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden hide-on-print">
+                <div class="px-6 py-4 border-b border-[#E5E7EB] bg-orange-50/60 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-orange-900">👨‍🍳 Kitchen KOT History</h3>
+                    <span class="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded border border-orange-200">
+                        {{ $order->kitchenTickets->count() }} {{ Str::plural('Ticket', $order->kitchenTickets->count()) }}
+                    </span>
+                </div>
+                <div class="p-6 space-y-4">
+                    @foreach($order->kitchenTickets as $ticket)
+                    <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-mono font-bold text-xs text-[#172033]">{{ $ticket->ticket_number }}</span>
+                            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded 
+                                @if($ticket->status === 'served') bg-emerald-100 text-emerald-800 border border-emerald-200
+                                @elseif($ticket->status === 'ready') bg-blue-100 text-blue-800 border border-blue-200
+                                @elseif($ticket->status === 'preparing') bg-orange-100 text-orange-800 border border-orange-200
+                                @elseif($ticket->status === 'cancelled') bg-red-100 text-red-800 border border-red-200
+                                @else bg-gray-100 text-gray-700 border border-gray-200 @endif">
+                                {{ $ticket->status }}
+                            </span>
+                        </div>
+                        <div class="text-[11px] text-[#64748B] flex justify-between">
+                            <span>Station: {{ $ticket->station ?? 'Main Kitchen' }}</span>
+                            <span>Time: {{ $ticket->created_at ? $ticket->created_at->format('h:i A') : 'N/A' }}</span>
+                        </div>
+                        @if($ticket->items && $ticket->items->count() > 0)
+                        <div class="pt-1.5 border-t border-slate-200/60 space-y-1">
+                            @foreach($ticket->items as $tItem)
+                            <div class="flex justify-between text-xs text-slate-700">
+                                <span>• {{ $tItem->product_name }}</span>
+                                <span class="font-mono font-semibold">×{{ $tItem->quantity }}</span>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
+                    </div>
+                    @endforeach
                 </div>
             </div>
             @endif

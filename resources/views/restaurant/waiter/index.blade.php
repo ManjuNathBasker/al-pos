@@ -9,6 +9,26 @@
         const matchesStatus = (this.statusFilter === 'all' || this.statusFilter === tableStatus);
         const matchesSearch = (!this.search || tableName.toLowerCase().includes(this.search.toLowerCase()));
         return matchesStatus && matchesSearch;
+    },
+    async completeTable(tableId) {
+        if (!confirm('Mark order as COMPLETED and free this table?')) return;
+        try {
+            const res = await fetch('/waiter/order/' + tableId + '/complete', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.message || 'Failed to complete order');
+            }
+        } catch (e) {
+            alert('Error completing order');
+        }
     }
 }" x-cloak class="space-y-6">
 
@@ -223,9 +243,14 @@
                                         <span>+ Take Order</span>
                                     </span>
                                 @elseif($isOccupied)
-                                    <span class="text-[11px] font-black text-brand-600 group-hover:underline flex items-center justify-center gap-1">
-                                        <span>View Order →</span>
-                                    </span>
+                                    <div class="flex items-center justify-between gap-1">
+                                        <span class="text-[11px] font-black text-brand-600 group-hover:underline">
+                                            Order →
+                                        </span>
+                                        <button type="button" @click.prevent.stop="completeTable('{{ $table->id }}')" class="px-2 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-black border border-emerald-300 transition-colors shadow-2xs">
+                                            ✓ Free Table
+                                        </button>
+                                    </div>
                                 @else
                                     <span class="text-[11px] font-bold text-gray-500 flex items-center justify-center gap-1">
                                         <span>Manage Table</span>

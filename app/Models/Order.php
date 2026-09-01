@@ -189,6 +189,63 @@ class Order extends Model
         return format_currency($amount, $this, $decimals);
     }
 
+    // ── Payment Status & Recalculation Helpers ───────────────────────
+    public function isUnpaid(): bool
+    {
+        if (in_array($this->status, ['paid', 'completed', 'closed', 'refunded', 'cancelled'])) {
+            return false;
+        }
+        if ($this->payment_status === 'paid') {
+            return false;
+        }
+        return true;
+    }
+
+    public function isPaid(): bool
+    {
+        return !$this->isUnpaid();
+    }
+
+    public function recalculateTotals(): void
+    {
+        $subtotal = (float) $this->items()->sum(\Illuminate\Support\Facades\DB::raw('unit_price * quantity'));
+
+        $manualDiscount = 0;
+        if ($this->discount_type === 'percent') {
+            $manualDiscount = $subtotal * (($this->discount_value ?? 0) / 100);
+        } else {
+            $manualDiscount = (float) ($this->discount_value ?? 0);
+        }
+
+        $couponDiscount = 0;
+        if ($this->coupon_id) {
+            $coupon = $this->coupon ?? Coupon::find($this->coupon_id);
+            if ($coupon) {
+                if ($coupon->type === 'percent') {
+                    $couponDiscount = $subtotal * ($coupon->value / 100);
+                } else {
+                    $couponDiscount = $coupon->value;
+                }
+            }
+        }
+
+        $totalDiscountAmount = min($subtotal, $manualDiscount + $couponDiscount);
+        $taxableAmount = max(0, $subtotal - $totalDiscountAmount);
+
+        $company = $this->company ?? Company::find($this->company_id);
+        $companyTaxPct = $company ? ($company->getTaxPercentage() / 100) : 0.08;
+        $taxAmount = $taxableAmount * $companyTaxPct;
+
+        $totalAmount = max(0, $subtotal - $totalDiscountAmount + $taxAmount);
+
+        $this->update([
+            'subtotal'        => round($subtotal, 2),
+            'discount_amount' => round($totalDiscountAmount, 2),
+            'tax_amount'      => round($taxAmount, 2),
+            'total_amount'    => round($totalAmount, 2),
+        ]);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────
     public function scopePaid($query)
     {

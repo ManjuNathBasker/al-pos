@@ -11,17 +11,30 @@ class KOTService
 {
     /**
      * Generate Kitchen Tickets (KOTs) from an order.
+     * Only items that have not already been ticketed will generate new KOTs.
      * Items are grouped by station.
      */
     public function generateTickets(Order $order): array
     {
         return DB::transaction(function () use ($order) {
             $tickets = [];
-            $items = $order->items()->with('product')->get();
 
-            // Group items by their station (for now we assume 'Main Kitchen')
-            // In a real app, this would check product->kitchen_station
-            $groupedItems = $items->groupBy(function ($item) {
+            // Find items that do NOT have a KitchenTicketItem created yet
+            $existingItemIds = KitchenTicketItem::whereIn('order_item_id', $order->items()->pluck('id'))
+                ->pluck('order_item_id')
+                ->toArray();
+
+            $itemsToTicket = $order->items()
+                ->whereNotIn('id', $existingItemIds)
+                ->with('product')
+                ->get();
+
+            if ($itemsToTicket->isEmpty()) {
+                return $tickets;
+            }
+
+            // Group items by station
+            $groupedItems = $itemsToTicket->groupBy(function ($item) {
                 return $item->product->station ?? 'Main Kitchen';
             });
 
@@ -40,7 +53,7 @@ class KOTService
                         'order_item_id' => $item->id,
                         'product_name' => $item->product_name,
                         'quantity' => $item->quantity,
-                        'note' => $item->item_note,
+                        'note' => $item->item_note ?? null,
                         'status' => 'pending',
                     ]);
                 }
@@ -49,8 +62,10 @@ class KOTService
                 $tickets[] = $ticket;
             }
 
-            // Update order kitchen status
-            $order->update(['kitchen_status' => 'pending']);
+            // Update order kitchen status if pending
+            if ($order->kitchen_status === 'none') {
+                $order->update(['kitchen_status' => 'pending']);
+            }
 
             return $tickets;
         });

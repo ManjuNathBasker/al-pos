@@ -94,6 +94,40 @@ class InventoryService
     }
 
     /**
+     * Restore stock for a single cancelled order item.
+     * Prevents double-restoration by verifying $order->is_stock_deducted.
+     */
+    public function restoreStockFromOrderItem(\App\Models\OrderItem $orderItem)
+    {
+        $order = $orderItem->order;
+        if (!$order || !$order->is_stock_deducted) {
+            return; // Stock was not deducted for this order
+        }
+
+        $product = $orderItem->product;
+        if (!$product) {
+            return;
+        }
+
+        foreach ($product->recipeItems as $recipe) {
+            $totalRestoration = $recipe->quantity * $orderItem->quantity;
+            $inventoryItem = $recipe->inventoryItem;
+            if ($inventoryItem) {
+                $inventoryItem->increment('current_stock', $totalRestoration);
+
+                $this->logTransaction(
+                    $inventoryItem->id,
+                    'restoration',
+                    $totalRestoration,
+                    'Order',
+                    $order->id,
+                    "Stock restored for cancelled item: {$product->name}"
+                );
+            }
+        }
+    }
+
+    /**
      * Validate if enough stock is available for the given cart items.
      */
     public function validateStockAvailability(array $cart)

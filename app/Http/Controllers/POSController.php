@@ -322,6 +322,52 @@ class POSController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
+    //  POST /pos/complete-table-order/{table} — Complete order & free table
+    // ─────────────────────────────────────────────────────────────
+    public function completeTableOrder(Request $request, RestaurantTable $table)
+    {
+        $order = Order::where('table_id', $table->id)
+            ->whereNotIn('status', ['closed', 'cancelled'])
+            ->first();
+
+        if (!$order) {
+            $table->update([
+                'status' => 'available',
+                'customer_name' => null,
+                'customer_phone' => null
+            ]);
+            return response()->json(['success' => true, 'message' => 'Table freed successfully.']);
+        }
+
+        DB::beginTransaction();
+        try {
+            \App\Models\KitchenTicket::where('order_id', $order->id)
+                ->where('status', '!=', 'cancelled')
+                ->update(['status' => 'served']);
+
+            \App\Models\OrderItem::where('order_id', $order->id)
+                ->update(['kitchen_status' => 'served']);
+
+            $order->update([
+                'status' => 'closed',
+                'kitchen_status' => 'served'
+            ]);
+
+            $table->update([
+                'status' => 'available',
+                'customer_name' => null,
+                'customer_phone' => null
+            ]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Order completed successfully and table freed.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
     //  GET /pos/active-orders — list live active orders
     // ─────────────────────────────────────────────────────────────
     public function activeOrders()
@@ -333,14 +379,8 @@ class POSController extends Controller
             $query->where('company_id', $companyId);
         }
 
-        // Active orders: orders that are NOT completed/closed/cancelled or kitchen_status != served
-        $dbOrders = $query->where(function($q) {
-                $q->whereNotIn('status', ['completed', 'closed', 'cancelled'])
-                  ->where(function($subQ) {
-                      $subQ->whereNull('kitchen_status')
-                           ->orWhere('kitchen_status', '!=', 'served');
-                  });
-            })
+        // Active orders: orders that are NOT completed, closed, or cancelled
+        $dbOrders = $query->whereNotIn('status', ['completed', 'closed', 'cancelled'])
             ->with(['customer', 'table'])
             ->orderBy('created_at', 'asc') // Oldest first (highest duration)
             ->take(20)
@@ -699,6 +739,7 @@ class POSController extends Controller
 
             // Resolve service type accurately without defaulting to 'retail'
             $resolvedServiceType = $request->service_type;
+            $existingOrder = null;
             if ($request->order_id) {
                 $existingOrder = Order::find($request->order_id);
                 if ($existingOrder) {
@@ -717,7 +758,7 @@ class POSController extends Controller
             $orderData = [
                 'user_id'          => auth()->id(),
                 'waiter_id'        => auth()->id(),
-                'table_id'         => $request->table_id ?: null,
+                'table_id'         => $request->table_id ?: ($existingOrder ? $existingOrder->table_id : null),
                 'customer_id'      => $customer->id,
                 'service_type'     => $resolvedServiceType,
                 'delivery_status'  => ($resolvedServiceType === 'delivery') ? 'pending' : null,
@@ -870,37 +911,22 @@ class POSController extends Controller
                 app(\App\Services\KOTService::class)->generateTickets($order);
             }
 
-            // Update table status and order status based on Dine-In lifecycle
+            // Update table status and order payment status based on Dine-In lifecycle
             $tableIdToRelease = $order->table_id ?: $request->table_id;
             if ($tableIdToRelease && $resolvedServiceType === 'dine_in') {
                 $tableModel = RestaurantTable::find($tableIdToRelease);
-                if ($request->is_settlement || $request->settle_payment) {
-                    if ($tableModel) {
-                        $tableModel->update([
-                            'status'         => 'available',
-                            'customer_name'  => null,
-                            'customer_phone' => null,
-                        ]);
-                    }
-                    $order->update([
-                        'status'         => 'closed',
-                        'kitchen_status' => 'served',
-                    ]);
-                } else {
-                    if ($tableModel) {
-                        $tableModel->update([
-                            'status'         => 'occupied',
-                            'customer_name'  => $request->customer_name ?: $customer->name,
-                            'customer_phone' => $request->customer_phone ?: $customer->phone,
-                        ]);
-                    }
-                    $order->update([
-                        'status'         => 'paid',
+                if ($tableModel) {
+                    $tableModel->update([
+                        'status'         => 'occupied',
+                        'customer_name'  => $request->customer_name ?: ($customer->name ?? null),
+                        'customer_phone' => $request->customer_phone ?: ($customer->phone ?? null),
                     ]);
                 }
-            } else {
+            }
+
+            if ($request->is_settlement || $request->settle_payment || !empty($request->payment_details) || !empty($request->split_payments)) {
                 $order->update([
-                    'status'         => 'paid',
+                    'status' => 'paid',
                 ]);
             }
 

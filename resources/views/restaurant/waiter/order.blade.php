@@ -51,8 +51,15 @@
             </div>
         </div>
 
-        {{-- Order Tracker Trigger --}}
+        {{-- Order Tracker & Complete Order Triggers --}}
         <div class="flex items-center gap-2">
+            <template x-if="activeOrder || tableData.status !== 'available'">
+                <button @click="completeOrder()"
+                        class="px-3.5 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md flex items-center gap-1.5 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <span>Complete Table</span>
+                </button>
+            </template>
             <button @click="showTracking = true"
                     class="px-3.5 py-2 rounded-2xl bg-white border border-gray-200 hover:bg-gray-50 text-gray-800 text-xs font-black shadow-xs flex items-center gap-2 relative transition-all">
                 <svg class="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -481,15 +488,37 @@
                                         <span class="w-2 h-2 rounded-full bg-brand-500"></span>
                                         <div>
                                             <p class="font-bold text-gray-900 text-xs" x-text="item.product_name"></p>
-                                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider" x-text="'QTY: ' + item.quantity"></p>
+                                            <div class="flex items-center gap-2 mt-0.5">
+                                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider" x-text="'QTY: ' + item.quantity"></p>
+                                                <span class="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider"
+                                                      :class="{
+                                                          'bg-amber-50 text-amber-700 border border-amber-200': !item.kitchen_status || item.kitchen_status === 'pending',
+                                                          'bg-orange-50 text-orange-700 border border-orange-200': item.kitchen_status === 'preparing',
+                                                          'bg-blue-50 text-blue-700 border border-blue-200': item.kitchen_status === 'ready',
+                                                          'bg-emerald-50 text-emerald-700 border border-emerald-200': item.kitchen_status === 'served',
+                                                          'bg-red-50 text-red-700 border border-red-200': item.kitchen_status === 'cancelled'
+                                                      }"
+                                                      x-text="item.kitchen_status || 'pending'"></span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3">
                                         <span class="font-black text-xs text-gray-900" x-text="formatCurrency(item.subtotal)"></span>
-                                        <template x-if="item.kitchen_status === 'pending'">
-                                            <button @click="removeItem(item.id)" class="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
+                                        <template x-if="item.kitchen_status === 'pending' && activeOrder.status !== 'paid' && activeOrder.status !== 'closed'">
+                                            <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-2 py-1 shadow-2xs">
+                                                <button @click="updateItemQuantity(item.id, -1)" 
+                                                        class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-red-50 hover:text-red-600 font-black text-xs text-gray-700 flex items-center justify-center transition-colors">
+                                                    <template x-if="item.quantity > 1"><span>-</span></template>
+                                                    <template x-if="item.quantity === 1">
+                                                        <svg class="w-3 h-3 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </template>
+                                                </button>
+                                                <span class="text-xs font-black text-gray-900 px-1 font-mono" x-text="item.quantity"></span>
+                                                <button @click="updateItemQuantity(item.id, 1)" 
+                                                        class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-emerald-50 hover:text-emerald-600 font-black text-xs text-gray-700 flex items-center justify-center transition-colors">
+                                                    <span>+</span>
+                                                </button>
+                                            </div>
                                         </template>
                                     </div>
                                 </div>
@@ -505,14 +534,14 @@
                                 </button>
                             </template>
 
-                            <template x-if="activeOrder && activeOrder.kitchen_status === 'pending'">
+                            <template x-if="activeOrder && activeOrder.kitchen_status === 'pending' && activeOrder.status !== 'paid' && activeOrder.status !== 'closed'">
                                 <button @click="cancelOrder()" class="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl border border-red-200 transition-colors flex items-center justify-center gap-2 text-xs">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                     <span>Cancel Entire Order</span>
                                 </button>
                             </template>
 
-                            <template x-if="activeOrder && activeOrder.status !== 'closed'">
+                            <template x-if="(activeOrder && activeOrder.status !== 'closed') || tableData.status !== 'available'">
                                 <button @click="completeOrder()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-2 text-xs">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                     <span>Complete & Free Table</span>
@@ -526,7 +555,13 @@
                     <div class="text-center py-10">
                         <div class="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-3 text-2xl">🍽️</div>
                         <p class="text-gray-700 font-bold text-sm">No active order for this table</p>
-                        <p class="text-xs text-gray-400 mt-0.5">Select menu items and click Send to Kitchen</p>
+                        <p class="text-xs text-gray-400 mt-0.5 mb-6">Select menu items and click Send to Kitchen</p>
+                        <template x-if="tableData.status !== 'available'">
+                            <button @click="completeOrder()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition-colors inline-flex items-center justify-center gap-2 text-xs">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                <span>Complete & Free Table</span>
+                            </button>
+                        </template>
                     </div>
                 </template>
             </div>
@@ -662,7 +697,10 @@
                     try {
                         const res = await fetch(`/waiter/order/${this.tableId}/status`);
                         const data = await res.json();
-                        if (data.success) {
+                        if (data.table_status) {
+                            this.tableData.status = data.table_status;
+                        }
+                        if (data.success && data.status) {
                             this.activeOrder = {
                                 status: data.status,
                                 kitchen_status: data.kitchen_status,
@@ -692,6 +730,35 @@
                         }
                     } catch (e) {
                         alert('Error removing item');
+                    }
+                },
+
+                async updateItemQuantity(itemId, change) {
+                    const item = this.activeOrder ? this.activeOrder.items.find(i => i.id == itemId) : null;
+                    if (!item) return;
+
+                    if (item.quantity === 1 && change === -1) {
+                        return this.removeItem(itemId);
+                    }
+
+                    try {
+                        const res = await fetch(`/waiter/order/${this.tableId}/item/${itemId}/quantity`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ change: change })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            this.refreshStatus();
+                        } else {
+                            alert(data.message || 'Failed to update item quantity');
+                        }
+                    } catch (e) {
+                        alert('Error updating item quantity');
                     }
                 },
 

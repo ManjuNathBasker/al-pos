@@ -23,9 +23,17 @@ class WaiterController extends Controller
         $products   = Product::where('is_active', true)->orderBy('name')->get();
         
         $activeOrder = Order::where('table_id', $table->id)
-            ->whereIn('status', ['pending', 'processing', 'paid'])
+            ->whereNotIn('status', ['closed', 'cancelled'])
             ->with('items')
+            ->latest()
             ->first();
+
+        if (!$activeOrder && $table->status === 'occupied') {
+            $activeOrder = Order::where('table_id', $table->id)
+                ->with('items')
+                ->latest()
+                ->first();
+        }
 
         return view('restaurant.waiter.order', compact('table', 'categories', 'products', 'activeOrder'));
     }
@@ -41,7 +49,8 @@ class WaiterController extends Controller
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $order = Order::where('table_id', $table->id)
-                ->whereIn('status', ['pending', 'processing', 'paid'])
+                ->whereNotIn('status', ['closed', 'cancelled'])
+                ->latest()
                 ->first();
 
             if (!$order) {
@@ -73,36 +82,12 @@ class WaiterController extends Controller
                     'subtotal' => $item['price'] * $item['qty'],
                 ]);
 
-                $createdOrderItems[] = [
-                    'id' => $orderItem->id,
-                    'name' => $item['name'],
-                    'qty' => $item['qty'],
-                ];
             }
 
-            $order->update([
-                'subtotal' => $orderSubtotal,
-                'total_amount' => $orderSubtotal * 1.08,
-                'tax_amount' => $orderSubtotal * 0.08,
-            ]);
+            $order->recalculateTotals();
 
-            // Create Kitchen Ticket
-            $ticket = \App\Models\KitchenTicket::create([
-                'company_id' => $table->company_id,
-                'order_id' => $order->id,
-                'ticket_number' => 'KOT-' . rand(100, 999),
-                'status' => 'pending',
-            ]);
-
-            foreach ($createdOrderItems as $item) {
-                \App\Models\KitchenTicketItem::create([
-                    'kitchen_ticket_id' => $ticket->id,
-                    'order_item_id' => $item['id'],
-                    'product_name' => $item['name'],
-                    'quantity' => $item['qty'],
-                    'status' => 'pending',
-                ]);
-            }
+            // Generate KOT tickets for unticketed items
+            app(\App\Services\KOTService::class)->generateTickets($order);
 
             $table->update(['status' => 'occupied']);
 
@@ -116,47 +101,113 @@ class WaiterController extends Controller
 
     public function getStatus(RestaurantTable $table)
     {
+        $table->refresh();
         $order = Order::where('table_id', $table->id)
-            ->whereIn('status', ['pending', 'processing', 'paid'])
+            ->whereNotIn('status', ['closed', 'cancelled'])
             ->with('items')
+            ->latest()
             ->first();
 
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'No active order']);
+        if (!$order && $table->status === 'occupied') {
+            $order = Order::where('table_id', $table->id)
+                ->with('items')
+                ->latest()
+                ->first();
         }
 
         return response()->json([
-            'success' => true,
-            'status' => $order->status,
-            'kitchen_status' => $order->kitchen_status,
-            'items' => $order->items
+            'success' => $order ? true : false,
+            'table_status' => $table->status,
+            'status' => $order?->status,
+            'kitchen_status' => $order?->kitchen_status,
+            'items' => $order?->items ?: []
         ]);
     }
 
     public function removeItem(RestaurantTable $table, \App\Models\OrderItem $item)
     {
-        if ($item->order->table_id !== $table->id) abort(403);
+        $order = $item->order;
+        if (!$order || $order->table_id !== $table->id) abort(403, 'Item does not belong to this table order.');
+
+        if (!$order->isUnpaid()) {
+            return response()->json(['success' => false, 'message' => 'Item cancellation is only allowed on unpaid orders.'], 403);
+        }
         
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
-            $order = $item->order;
-            $itemSubtotal = $item->subtotal;
+            // Restore stock if it was deducted
+            $inventoryService = new \App\Services\InventoryService();
+            $inventoryService->restoreStockFromOrderItem($item);
+
+            // Clean up KOT ticket item
+            \App\Models\KitchenTicketItem::where('order_item_id', $item->id)->delete();
+            foreach ($order->kitchenTickets as $ticket) {
+                if ($ticket->items()->count() === 0) {
+                    $ticket->update(['status' => 'cancelled']);
+                }
+            }
+
             $item->delete();
 
-            $newSubtotal = $order->subtotal - $itemSubtotal;
-            $order->update([
-                'subtotal' => $newSubtotal,
-                'total_amount' => $newSubtotal * 1.08,
-                'tax_amount' => $newSubtotal * 0.08,
-            ]);
+            // Recalculate order totals centrally
+            $order->recalculateTotals();
 
             if ($order->items()->count() === 0) {
-                $order->delete();
+                $order->update([
+                    'status' => 'cancelled',
+                    'kitchen_status' => 'none',
+                ]);
                 $table->update(['status' => 'available']);
             }
 
             \Illuminate\Support\Facades\DB::commit();
             return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function updateItemQuantity(RestaurantTable $table, \App\Models\OrderItem $item, Request $request)
+    {
+        $order = $item->order;
+        if (!$order || (int)$order->table_id !== (int)$table->id) {
+            return response()->json(['success' => false, 'message' => 'Item does not belong to this table order.'], 403);
+        }
+
+        if (!$order->isUnpaid()) {
+            return response()->json(['success' => false, 'message' => 'Quantity adjustments are only allowed on unpaid orders.'], 403);
+        }
+
+        $change = (int) $request->input('change', 0);
+        $newQuantity = (int) $request->input('quantity', $item->quantity + $change);
+
+        if ($newQuantity <= 0) {
+            return $this->removeItem($table, $item);
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $item->quantity = $newQuantity;
+            $item->subtotal = round($newQuantity * $item->unit_price, 2);
+            $item->save();
+
+            // Update linked KOT ticket item quantity if pending
+            \App\Models\KitchenTicketItem::where('order_item_id', $item->id)
+                ->where('status', 'pending')
+                ->update(['quantity' => $newQuantity]);
+
+            // Recalculate order totals centrally
+            $order->recalculateTotals();
+
+            \Illuminate\Support\Facades\DB::commit();
+            return response()->json([
+                'success' => true,
+                'new_quantity' => $item->quantity,
+                'item_subtotal' => $item->subtotal,
+                'order_subtotal' => $order->subtotal,
+                'order_total' => $order->total_amount,
+            ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

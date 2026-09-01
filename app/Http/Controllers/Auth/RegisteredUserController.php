@@ -55,7 +55,11 @@ class RegisteredUserController extends Controller
 
         // 3. Assign Owner Role (Global - without team scoping)
         setPermissionsTeamId(null);
-        $user->assignRole('Owner');
+        $ownerRole = \Spatie\Permission\Models\Role::firstOrCreate([
+            'name' => 'Owner',
+            'guard_name' => 'web',
+        ]);
+        $user->assignRole($ownerRole);
 
         // 4. Set session company_id and team context for immediate access
         session(['company_id' => $company->id]);

@@ -12,7 +12,10 @@ class KitchenController extends Controller
     {
         $companyId = session('company_id');
         $query = KitchenTicket::with(['items', 'order.table', 'order.customer'])
-            ->whereIn('status', ['pending', 'preparing', 'ready']);
+            ->whereIn('status', ['pending', 'preparing', 'ready'])
+            ->whereHas('order', function ($q) {
+                $q->whereNotIn('status', ['closed', 'cancelled']);
+            });
 
         if ($companyId) {
             $query->where('company_id', $companyId);
