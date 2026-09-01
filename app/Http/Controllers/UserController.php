@@ -86,7 +86,9 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $currentUser = Auth::user();
-        if (!$currentUser->isAdmin() && !$user->companies->contains('id', session('company_id'))) {
+        $currentCompanyId = session('company_id');
+
+        if (!$currentUser->isAdmin() && !$user->companies->contains('id', $currentCompanyId)) {
             abort(403);
         }
 
@@ -96,21 +98,32 @@ class UserController extends Controller
             $companies = $currentUser->companies;
         }
 
-        $roles = Role::where('team_id', session('company_id'))
+        $roles = Role::where('team_id', $currentCompanyId)
                      ->orWhereNull('team_id')
                      ->get();
         
-        setPermissionsTeamId(session('company_id'));
-        $userRoles = $user->roles()->where('roles.team_id', session('company_id'))->pluck('name')->toArray();
-        $userCompanies = $user->companies->pluck('id')->toArray();
+        if ($currentCompanyId) {
+            setPermissionsTeamId($currentCompanyId);
+        }
 
-        return view('users.edit', compact('user', 'roles', 'userRoles', 'companies', 'userCompanies'));
+        $userRoles = $user->roles()
+            ->where(function($q) use ($currentCompanyId) {
+                $q->where('roles.team_id', $currentCompanyId)->orWhereNull('roles.team_id');
+            })
+            ->pluck('name')
+            ->toArray();
+
+        $assignedCompanyIds = $user->companies->pluck('id')->toArray();
+
+        return view('users.edit', compact('user', 'roles', 'userRoles', 'companies', 'assignedCompanyIds'));
     }
 
     public function update(Request $request, User $user)
     {
         $currentUser = Auth::user();
-        if (!$currentUser->isAdmin() && !$user->companies->contains('id', session('company_id'))) {
+        $currentCompanyId = session('company_id');
+
+        if (!$currentUser->isAdmin() && !$user->companies->contains('id', $currentCompanyId)) {
             abort(403);
         }
 
@@ -118,7 +131,8 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'companies' => 'required|array',
-            'roles' => 'array'
+            'companies.*' => 'exists:companies,id',
+            'roles' => 'nullable|array'
         ]);
 
         $user->update([
@@ -126,32 +140,36 @@ class UserController extends Controller
             'email' => $request->email,
         ]);
 
-        if ($request->password) {
+        if ($request->filled('password')) {
             $user->update(['password' => Hash::make($request->password)]);
         }
 
-        // Sync companies
-        $user->companies()->sync($request->companies);
+        // Validate & sync companies (only valid existing company IDs)
+        $validCompanyIds = Company::whereIn('id', (array)$request->companies)->pluck('id')->toArray();
+        if (empty($validCompanyIds) && $currentCompanyId) {
+            $validCompanyIds = [$currentCompanyId];
+        }
 
-        // Sync roles for each selected company
-        if ($request->roles) {
-            foreach ($request->companies as $companyId) {
-                setPermissionsTeamId($companyId);
-                
-                $validRoles = Role::whereIn('name', $request->roles)
-                    ->where(function($q) use ($companyId) {
-                        $q->where('team_id', $companyId)->orWhereNull('team_id');
-                    })
-                    ->pluck('name')
-                    ->toArray();
+        $user->companies()->sync($validCompanyIds);
 
-                if (!empty($validRoles)) {
-                    // Using syncRoles with team context only affects the current team
-                    $user->syncRoles($validRoles);
-                }
-            }
-            // Reset to session company
-            setPermissionsTeamId(session('company_id'));
+        // Sync roles for each assigned company
+        $submittedRoles = $request->input('roles', []);
+        foreach ($validCompanyIds as $companyId) {
+            setPermissionsTeamId($companyId);
+            
+            $validRoles = Role::whereIn('name', (array)$submittedRoles)
+                ->where(function($q) use ($companyId) {
+                    $q->where('team_id', $companyId)->orWhereNull('team_id');
+                })
+                ->pluck('name')
+                ->toArray();
+
+            $user->syncRoles($validRoles);
+        }
+
+        // Reset to active session company team context
+        if ($currentCompanyId) {
+            setPermissionsTeamId($currentCompanyId);
         }
 
         return redirect()->route('users.index')->with('success', 'User updated successfully.');

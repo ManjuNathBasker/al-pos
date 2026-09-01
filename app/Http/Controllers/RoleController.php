@@ -40,7 +40,7 @@ class RoleController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'permissions' => 'required|array',
+            'permissions' => 'nullable|array',
         ]);
 
         $role = Role::create([
@@ -49,7 +49,12 @@ class RoleController extends Controller
             'guard_name' => 'web'
         ]);
 
-        $role->syncPermissions($request->permissions);
+        $permissions = $request->input('permissions', []);
+        foreach ($permissions as $permissionName) {
+            Permission::findOrCreate($permissionName, 'web');
+        }
+
+        $role->syncPermissions($permissions);
 
         return redirect()->route('roles.index')->with('success', 'Role created successfully.');
     }
@@ -99,11 +104,17 @@ class RoleController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'permissions' => 'required|array',
+            'permissions' => 'nullable|array',
         ]);
 
         $role->update(['name' => $request->name]);
-        $role->syncPermissions($request->permissions);
+
+        $permissions = $request->input('permissions', []);
+        foreach ($permissions as $permissionName) {
+            Permission::findOrCreate($permissionName, 'web');
+        }
+
+        $role->syncPermissions($permissions);
 
         return redirect()->route('roles.index')->with('success', 'Role updated successfully.');
     }

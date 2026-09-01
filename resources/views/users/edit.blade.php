@@ -58,7 +58,7 @@
                     <label class="relative flex items-start p-3 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer">
                         <div class="flex items-center h-5">
                             <input type="checkbox" name="companies[]" value="{{ $company->id }}"
-                                   {{ in_array($company->id, $userCompanies) ? 'checked' : '' }}
+                                   {{ in_array($company->id, $assignedCompanyIds) ? 'checked' : '' }}
                                    class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-slate-300 rounded cursor-pointer">
                         </div>
                         <div class="ml-3 text-sm">
