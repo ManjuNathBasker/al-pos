@@ -11,6 +11,11 @@ class TableSection extends Model
 
     protected $fillable = ['company_id', 'name'];
 
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function tables()
     {
         return $this->hasMany(RestaurantTable::class, 'section_id');

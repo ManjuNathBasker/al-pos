@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
+use App\Models\CardType;
 use App\Models\Category;
-use App\Models\Product;
-use App\Models\Order;
-use App\Models\Customer;
-use App\Models\WalletTransaction;
-use App\Models\OrderItem;
-use App\Models\Coupon;
-use App\Models\Payment;
 use App\Models\Company;
+use App\Models\Coupon;
+use App\Models\Customer;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\RestaurantTable;
+use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\InventoryService;
@@ -51,7 +54,25 @@ class POSController extends Controller
                             ->where('company_id', session('company_id'))
                             ->get();
 
-        return view('pos.index', compact('categories', 'products', 'cart', 'paymentAccounts'));
+        // Pass card account IDs and card types to POS
+        $cardAccountIds = $paymentAccounts->where('is_card_account', true)->pluck('id');
+        $cardTypes = CardType::where('status', true)->orderBy('name')->get();
+
+        // Load company and settings
+        $company = Company::find(session('company_id'));
+        $cardCommissionTax = $company ? $company->getCardCommissionTax() : 0;
+        $companyTaxPercentage = $company ? $company->getTaxPercentage() : 8.0;
+        $currencyConfig = $company ? $company->getCurrencyConfig() : default_currency_config();
+
+        // Load delivery partners
+        $deliveryPartners = \App\Models\DeliveryPartner::where('company_id', session('company_id'))
+            ->where('status', true)
+            ->get();
+
+        return view('pos.index', compact(
+            'categories', 'products', 'cart', 'paymentAccounts',
+            'cardAccountIds', 'cardTypes', 'cardCommissionTax', 'companyTaxPercentage', 'currencyConfig', 'deliveryPartners'
+        ));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -159,19 +180,264 @@ class POSController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  GET /pos/active-tables — list tables with active orders
+    //  GET /pos/active-tables — list all tables with active orders
     // ─────────────────────────────────────────────────────────────
     public function activeTables()
     {
-        $tables = \App\Models\RestaurantTable::where('status', 'occupied')
-            ->with(['activeOrder' => function($q) {
-                $q->with('items');
+        $companyId = session('company_id');
+        $query = \App\Models\RestaurantTable::query();
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $tables = $query->with(['activeOrder' => function($q) {
+                $q->with('items', 'customer');
             }, 'section'])
+            ->orderBy('name')
             ->get();
 
         return response()->json([
             'success' => true,
-            'tables' => $tables
+            'tables'  => $tables
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /pos/save-table-order — Save active table order & send KOT
+    // ─────────────────────────────────────────────────────────────
+    public function saveTableOrder(Request $request)
+    {
+        $request->validate([
+            'table_id' => 'required|exists:restaurant_tables,id',
+            'cart'     => 'required|array|min:1',
+        ]);
+
+        $companyId = session('company_id');
+        $table = RestaurantTable::findOrFail($request->table_id);
+
+        // Resolve customer if provided
+        $customerId = null;
+        if (!empty($request->customer_name) || !empty($request->customer_phone)) {
+            $phone = !empty($request->customer_phone) ? $request->customer_phone : '0000000000';
+            $customer = Customer::firstOrCreate(
+                ['phone' => $phone, 'company_id' => $companyId],
+                ['name' => $request->customer_name ?: 'Dine-in Customer', 'wallet_balance' => 0]
+            );
+            $customerId = $customer->id;
+        }
+
+        DB::beginTransaction();
+        try {
+            $order = null;
+            if ($request->order_id) {
+                $order = Order::find($request->order_id);
+            }
+            if (!$order) {
+                $order = Order::where('table_id', $table->id)
+                    ->whereNotIn('status', ['completed', 'closed', 'cancelled'])
+                    ->first();
+            }
+
+            $cart = $request->cart;
+            $subtotal = 0;
+            foreach ($cart as $item) {
+                $subtotal += ($item['price'] * $item['qty']);
+            }
+            $taxAmount = $subtotal * 0.18;
+            $totalAmount = $subtotal + $taxAmount;
+
+            if ($order) {
+                $order->update([
+                    'table_id'       => $table->id,
+                    'service_type'   => 'dine_in',
+                    'customer_id'    => $customerId ?: $order->customer_id,
+                    'user_id'        => auth()->id(),
+                    'waiter_id'      => auth()->id(),
+                    'subtotal'       => $subtotal,
+                    'tax_amount'     => $taxAmount,
+                    'total_amount'   => $totalAmount,
+                    'kitchen_status' => 'pending',
+                    'status'         => 'pending',
+                ]);
+                $order->items()->delete();
+            } else {
+                $maxId = (Order::withTrashed()->where('company_id', $companyId)->max('id') ?? 0) + 1;
+                $orderNumber = 'ORD-' . str_pad($maxId, 5, '0', STR_PAD_LEFT);
+
+                $order = Order::create([
+                    'company_id'     => $companyId,
+                    'order_number'   => $orderNumber,
+                    'service_type'   => 'dine_in',
+                    'table_id'       => $table->id,
+                    'customer_id'    => $customerId,
+                    'user_id'        => auth()->id(),
+                    'waiter_id'      => auth()->id(),
+                    'subtotal'       => $subtotal,
+                    'tax_amount'     => $taxAmount,
+                    'total_amount'   => $totalAmount,
+                    'status'         => 'pending',
+                    'kitchen_status' => 'pending',
+                ]);
+            }
+
+            foreach ($cart as $item) {
+                $product = Product::find($item['id']);
+                OrderItem::create([
+                    'company_id'     => $companyId,
+                    'order_id'       => $order->id,
+                    'product_id'     => $item['id'],
+                    'product_name'   => $item['name'],
+                    'unit_price'     => $item['price'],
+                    'quantity'       => $item['qty'],
+                    'subtotal'       => $item['price'] * $item['qty'],
+                    'kitchen_status' => 'pending',
+                ]);
+            }
+
+            // Update table status to occupied
+            $table->update([
+                'status'         => 'occupied',
+                'customer_name'  => $request->customer_name ?: null,
+                'customer_phone' => !empty($request->customer_phone) ? $request->customer_phone : null,
+            ]);
+
+            // Generate KOT tickets for Kitchen
+            $tickets = app(\App\Services\KOTService::class)->generateTickets($order);
+
+            DB::commit();
+
+            return response()->json([
+                'success'      => true,
+                'message'      => 'Order saved and sent to kitchen KOT!',
+                'order_db_id'  => $order->id,
+                'order_id'     => $order->order_number ?? ('#' . str_pad($order->id, 5, '0', STR_PAD_LEFT)),
+                'table_id'     => $table->id,
+                'table_name'   => $table->name,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /pos/complete-table-order/{table} — Complete order & free table
+    // ─────────────────────────────────────────────────────────────
+    public function completeTableOrder(Request $request, RestaurantTable $table)
+    {
+        $order = Order::where('table_id', $table->id)
+            ->whereNotIn('status', ['closed', 'cancelled'])
+            ->first();
+
+        if (!$order) {
+            $table->update([
+                'status' => 'available',
+                'customer_name' => null,
+                'customer_phone' => null
+            ]);
+            return response()->json(['success' => true, 'message' => 'Table freed successfully.']);
+        }
+
+        DB::beginTransaction();
+        try {
+            \App\Models\KitchenTicket::where('order_id', $order->id)
+                ->where('status', '!=', 'cancelled')
+                ->update(['status' => 'served']);
+
+            \App\Models\OrderItem::where('order_id', $order->id)
+                ->update(['kitchen_status' => 'served']);
+
+            $order->update([
+                'status' => 'closed',
+                'kitchen_status' => 'served'
+            ]);
+
+            $table->update([
+                'status' => 'available',
+                'customer_name' => null,
+                'customer_phone' => null
+            ]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Order completed successfully and table freed.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  GET /pos/active-orders — list live active orders
+    // ─────────────────────────────────────────────────────────────
+    public function activeOrders()
+    {
+        $companyId = session('company_id');
+        $query = Order::query();
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        // Active orders: orders that are NOT completed, closed, or cancelled
+        $dbOrders = $query->whereNotIn('status', ['completed', 'closed', 'cancelled'])
+            ->with(['customer', 'table'])
+            ->orderBy('created_at', 'asc') // Oldest first (highest duration)
+            ->take(20)
+            ->get();
+
+        $formattedOrders = $dbOrders->map(function ($order) {
+            $diffMinutes = (int) now()->diffInMinutes($order->created_at);
+            if ($diffMinutes >= 1440) {
+                $durationStr = floor($diffMinutes / 1440) . 'd ' . floor(($diffMinutes % 1440) / 60) . 'h';
+            } elseif ($diffMinutes >= 60) {
+                $durationStr = floor($diffMinutes / 60) . 'h ' . ($diffMinutes % 60) . 'm';
+            } else {
+                $durationStr = max(1, $diffMinutes) . 'm';
+            }
+
+            $serviceType = ($order->table_id || $order->table) ? 'dine_in' : (($order->service_type === 'retail' || empty($order->service_type)) ? 'counter' : $order->service_type);
+            $serviceLabel = match ($serviceType) {
+                'dine_in' => 'Dine-In',
+                'takeaway', 'pickup' => 'Takeaway',
+                'delivery' => 'Delivery',
+                default => 'Counter',
+            };
+
+            $rawStatus = strtolower($order->kitchen_status ?? $order->status ?? 'pending');
+            $status = match ($rawStatus) {
+                'preparing' => 'preparing',
+                'ready' => 'ready',
+                'pending', 'placed', 'open', 'paid', 'none' => 'pending',
+                default => 'pending',
+            };
+
+            $paymentStatus = strtolower($order->payment_status ?? ($order->status === 'paid' ? 'paid' : 'unpaid'));
+            $paymentStatusLabel = match ($paymentStatus) {
+                'paid' => 'Paid',
+                'partial' => 'Partial',
+                default => 'Unpaid',
+            };
+
+            return [
+                'id' => $order->id,
+                'order_number' => $order->order_number ?? ('#ORD-' . str_pad($order->id, 5, '0', STR_PAD_LEFT)),
+                'service_type' => $serviceType,
+                'service_type_label' => $serviceLabel,
+                'time' => $order->created_at->format('h:i A'),
+                'duration' => $durationStr,
+                'status' => $status,
+                'status_label' => ucfirst($status),
+                'payment_status' => $paymentStatus,
+                'payment_status_label' => $paymentStatusLabel,
+                'total_amount' => (float) $order->total_amount,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'orders'  => $formattedOrders,
+            'count'   => $formattedOrders->count(),
         ]);
     }
 
@@ -209,6 +475,10 @@ class POSController extends Controller
             'cart' => $cart,
             'order' => [
                 'id' => $order->id,
+                'status' => $order->status,
+                'payment_status' => $order->payment_status ?? ($order->status === 'paid' ? 'paid' : 'unpaid'),
+                'service_type' => $order->service_type,
+                'table' => $order->table,
                 'customer' => $order->customer,
                 'discount_value' => $order->discount_value,
                 'discount_type' => $order->discount_type,
@@ -223,15 +493,27 @@ class POSController extends Controller
     //  Body: { discount_percent: float, note: string, total: float, order_id: int|null }
     //  Returns: { success: true, order_id: string, total: float }
     // ─────────────────────────────────────────────────────────────
-        public function customer(Request $request)
+    public function customer(Request $request)
     {
-        $phone = $request->query('phone');
-        if (!$phone) return response()->json(['success' => false]);
-        $customer = Customer::where('phone', $phone)->first();
-        if ($customer) {
-            return response()->json(['success' => true, 'customer' => $customer]);
+        $term = $request->query('query') ?? $request->query('phone') ?? $request->query('search');
+        if (!$term) {
+            return response()->json(['success' => false, 'customers' => []]);
         }
-        return response()->json(['success' => false]);
+
+        $customers = Customer::where(function ($q) use ($term) {
+            $q->where('phone', 'like', "%{$term}%")
+              ->orWhere('name', 'like', "%{$term}%");
+        })->limit(10)->get();
+
+        if ($customers->isNotEmpty()) {
+            return response()->json([
+                'success'   => true,
+                'customers' => $customers,
+                'customer'  => $customers->first()
+            ]);
+        }
+
+        return response()->json(['success' => false, 'customers' => []]);
     }
 
         public function validateCoupon(Request $request)
@@ -270,8 +552,8 @@ class POSController extends Controller
             'coupon_id'        => 'nullable|exists:coupons,id',
             'note'             => 'nullable|string|max:500',
             'total'            => 'required|numeric|min:0',
-            'customer_phone'   => 'required|string',
-            'customer_name'    => 'required|string',
+            'customer_phone'   => 'nullable|string',
+            'customer_name'    => 'nullable|string',
         ]);
 
         $cart = $request->input('cart');
@@ -292,13 +574,16 @@ class POSController extends Controller
 
         // Fetch open register session for cash shift mode (if any)
         $openSession = \App\Models\RegisterSession::openForUser(auth()->id())->first();
+        $company = Company::find(session('company_id'));
+        $currencyConfig = $company ? $company->getCurrencyConfig() : default_currency_config();
 
         DB::beginTransaction();
         try {
-            // Find or create customer
+            $phone = $request->customer_phone ?: '0000000000';
+            $name = $request->customer_name ?: 'Walk-in Customer';
             $customer = Customer::firstOrCreate(
-                ['phone' => $request->customer_phone],
-                ['name' => $request->customer_name, 'wallet_balance' => 0]
+                ['phone' => $phone],
+                ['name' => $name, 'wallet_balance' => 0]
             );
 
             // Track card discounts and service charges
@@ -342,6 +627,7 @@ class POSController extends Controller
                 }
             }
 
+
             // Calculate manual discount amount
             $manualDiscount = 0;
             if ($request->discount_type === 'percent') {
@@ -366,12 +652,51 @@ class POSController extends Controller
             // Total discount on order = Manual + Coupon + Card Offer Discounts
             $totalDiscountAmount = $manualDiscount + $couponDiscount + $totalCardDiscount;
             
-            // Adjust tax amount
+            // Adjust tax amount using company configured tax percentage
             $taxableAmount = max(0, $request->subtotal - $totalDiscountAmount);
-            $taxAmount = $taxableAmount * 0.08;
+            $companyTaxPct = $company ? ($company->getTaxPercentage() / 100) : 0.08;
+            $taxAmount = $taxableAmount * $companyTaxPct;
 
             // Final Order Total = Subtotal - Total Discount + Tax + Card Service Charges
             $finalTotalAmount = max(0, $request->subtotal - $totalDiscountAmount + $taxAmount + $totalCardServiceCharge);
+
+            // ── Card Commission Calculation ────────────────────────────────
+            // Calculated from the card_type_id sent in the checkout payload.
+            $cardTypeId         = $request->input('card_type_id');
+            if (!$cardTypeId && $request->is_split && is_array($request->split_payments)) {
+                foreach ($request->split_payments as $sp) {
+                    if (!empty($sp['card_type_id'])) {
+                        $cardTypeId = $sp['card_type_id'];
+                        break;
+                    }
+                }
+            }
+            if (!$cardTypeId && is_array($request->card_details)) {
+                foreach ($request->card_details as $cd) {
+                    if (!empty($cd['card_type_id'])) {
+                        $cardTypeId = $cd['card_type_id'];
+                        break;
+                    }
+                }
+            }
+
+            $commissionAmount   = 0;
+            $commissionTax      = 0;
+            $commissionTotal    = 0;
+            $netReceived        = 0;
+
+            if ($cardTypeId) {
+                $cardTypeModel = CardType::find($cardTypeId);
+                if ($cardTypeModel) {
+                    $company = Company::find(session('company_id'));
+                    $billAmount       = $finalTotalAmount; // commission on the full bill
+                    $commissionAmount = $cardTypeModel->calculateCommission($billAmount);
+                    $commissionTaxPct = $company ? $company->getCardCommissionTax() : 0;
+                    $commissionTax    = round($commissionAmount * ($commissionTaxPct / 100), 4);
+                    $commissionTotal  = round($commissionAmount + $commissionTax, 4);
+                    $netReceived      = round($billAmount - $commissionTotal, 4);
+                }
+            }
 
             $useWallet = filter_var($request->use_wallet, FILTER_VALIDATE_BOOLEAN);
             $walletUsed = 0;
@@ -400,12 +725,43 @@ class POSController extends Controller
             $changeReturned = max(0, $totalPaid - $finalTotalAmount);
             $balanceDue = max(0, $finalTotalAmount - $totalPaid);
 
+            // ── Delivery Partner Calculation ────────────────────────────────
+            $deliveryPartnerId = $request->input('delivery_partner_id');
+            $deliveryCommissionAmount = 0;
+            $settlementStatus = null;
+            if ($request->service_type === 'delivery' && $deliveryPartnerId) {
+                $deliveryPartner = \App\Models\DeliveryPartner::find($deliveryPartnerId);
+                if ($deliveryPartner) {
+                    $deliveryCommissionAmount = round($finalTotalAmount * ($deliveryPartner->commission_percentage / 100), 4);
+                    $settlementStatus = 'pending';
+                }
+            }
+
+            // Resolve service type accurately without defaulting to 'retail'
+            $resolvedServiceType = $request->service_type;
+            $existingOrder = null;
+            if ($request->order_id) {
+                $existingOrder = Order::find($request->order_id);
+                if ($existingOrder) {
+                    if ($existingOrder->table_id || $existingOrder->service_type === 'dine_in') {
+                        $resolvedServiceType = 'dine_in';
+                    } elseif (!empty($existingOrder->service_type) && $existingOrder->service_type !== 'retail') {
+                        $resolvedServiceType = $existingOrder->service_type;
+                    }
+                }
+            }
+            if (!$resolvedServiceType || $resolvedServiceType === 'counter') {
+                $resolvedServiceType = ($request->table_id ? 'dine_in' : ($request->service_type && in_array($request->service_type, ['retail', 'dine_in', 'takeaway', 'delivery']) ? $request->service_type : 'retail'));
+            }
+
             // Create or Update Order
             $orderData = [
                 'user_id'          => auth()->id(),
+                'waiter_id'        => auth()->id(),
+                'table_id'         => $request->table_id ?: ($existingOrder ? $existingOrder->table_id : null),
                 'customer_id'      => $customer->id,
-                'service_type'     => $request->service_type ?? 'retail',
-                'delivery_status'  => ($request->service_type === 'delivery') ? 'pending' : null,
+                'service_type'     => $resolvedServiceType,
+                'delivery_status'  => ($resolvedServiceType === 'delivery') ? 'pending' : null,
                 'discount_amount'  => $totalDiscountAmount,
                 'discount_type'    => 'fixed',
                 'discount_value'   => $totalDiscountAmount,
@@ -419,32 +775,26 @@ class POSController extends Controller
                 'total_paid'       => $totalPaid,
                 'status'           => 'paid',
                 'register_session_id' => $openSession ? $openSession->id : null,
+                // Card commission
+                'card_type_id'                    => $cardTypeId ?: null,
+                'card_commission_amount'          => $commissionAmount,
+                'card_commission_tax_amount'      => $commissionTax,
+                'card_commission_total_deduction' => $commissionTotal,
+                'card_net_received'               => $commissionTotal > 0 ? $netReceived : 0,
+                // Delivery Partner
+                'delivery_partner_id'             => $deliveryPartnerId ?: null,
+                'delivery_commission_amount'      => $deliveryCommissionAmount,
+                'settlement_status'               => $settlementStatus,
+                // Currency Snapshot
+                'currency_code'                   => $currencyConfig['code'] ?? 'INR',
+                'currency_symbol'                 => $currencyConfig['symbol'] ?? '₹',
+                'currency_symbol_position'        => $currencyConfig['symbol_position'] ?? 'before',
+                'currency_decimal_places'         => (int) ($currencyConfig['decimal_places'] ?? 2),
             ];
 
             if ($request->order_id) {
                 $order = Order::findOrFail($request->order_id);
                 $order->update($orderData);
-                
-                // If it was a dine-in order, free the table
-                if ($order->table_id) {
-                    \App\Models\RestaurantTable::where('id', $order->table_id)->update(['status' => 'available']);
-                }
-
-                // Mark all kitchen tickets as served if they weren't
-                \App\Models\KitchenTicket::where('order_id', $order->id)
-                    ->where('status', '!=', 'served')
-                    ->each(function($ticket) {
-                        $ticket->update(['status' => 'served']);
-                        // Only update items if the status is valid for them
-                        foreach($ticket->items as $item) {
-                            if ($item->orderItem) {
-                                $item->orderItem->update(['kitchen_status' => 'served']);
-                            }
-                        }
-                    });
-
-                // Clear existing items and re-add from cart to ensure consistency
-                $order->items()->delete();
             } else {
                 if (empty($orderData['order_number'])) {
                     $orderData['order_number'] = 'ORD-' . str_pad((Order::withTrashed()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
@@ -462,7 +812,7 @@ class POSController extends Controller
                     ]);
                 }
                 // Also record wallet payment for split orders
-                if ($walletUsed > 0) {
+                if ($walletUsed !== 0) {
                     $order->payments()->create([
                         'company_id' => $order->company_id,
                         'payment_method' => 'wallet',
@@ -478,7 +828,7 @@ class POSController extends Controller
                         'amount' => $amount,
                     ]);
                 }
-                if ($walletUsed > 0) {
+                if ($walletUsed !== 0) {
                     $order->payments()->create([
                         'company_id' => $order->company_id, 
                         'payment_method' => 'wallet', 
@@ -499,37 +849,85 @@ class POSController extends Controller
                 Coupon::find($request->coupon_id)->increment('used_count');
             }
 
-            // Save items
-            foreach ($cart as $item) {
-                OrderItem::create([
-                    'order_id'   => $order->id,
-                    'product_id' => $item['id'],
-                    'product_name'    => $item['name'],
-                    'unit_price'      => $item['price'],
-                    'quantity'        => $item['qty'],
-                    'subtotal'   => $item['price'] * $item['qty'],
-                ]);
-            }
+            // Save or update items cleanly without breaking KOT ticket links
+            if ($request->order_id) {
+                $existingItemMap = $order->items->keyBy('product_id');
+                $cartProductIds = collect($cart)->pluck('id')->toArray();
 
-            // If it's a new Takeaway or Delivery order in Restaurant Mode, send to Kitchen
-            $company = Company::find(session('company_id'));
-            if (!$request->order_id && $company->isModuleEnabled('restaurant_mode') && in_array($order->service_type, ['takeaway', 'delivery'])) {
-                $ticket = \App\Models\KitchenTicket::create([
-                    'order_id'      => $order->id,
-                    'company_id'    => $company->id,
-                    'ticket_number' => 'KOT-' . rand(100, 999),
-                    'status'        => 'pending',
-                ]);
+                // Safely remove items no longer in cart (only if not linked to active KOT items)
+                foreach ($order->items as $existingItem) {
+                    if (!in_array($existingItem->product_id, $cartProductIds)) {
+                        $isUsedInKOT = \App\Models\KitchenTicketItem::where('order_item_id', $existingItem->id)->exists();
+                        if (!$isUsedInKOT) {
+                            $existingItem->delete();
+                        }
+                    }
+                }
 
-                foreach ($order->items as $orderItem) {
-                    \App\Models\KitchenTicketItem::create([
-                        'kitchen_ticket_id' => $ticket->id,
-                        'order_item_id'     => $orderItem->id,
-                        'product_name'      => $orderItem->product_name,
-                        'quantity'          => $orderItem->quantity,
-                        'status'            => 'pending',
+                foreach ($cart as $item) {
+                    if ($existingItemMap->has($item['id'])) {
+                        $existingItem = $existingItemMap->get($item['id']);
+                        $existingItem->update([
+                            'product_name' => $item['name'],
+                            'unit_price'   => $item['price'],
+                            'quantity'     => $item['qty'],
+                            'subtotal'     => $item['price'] * $item['qty'],
+                        ]);
+                    } else {
+                        OrderItem::create([
+                            'company_id'   => $order->company_id,
+                            'order_id'     => $order->id,
+                            'product_id'   => $item['id'],
+                            'product_name' => $item['name'],
+                            'unit_price'   => $item['price'],
+                            'quantity'     => $item['qty'],
+                            'subtotal'     => $item['price'] * $item['qty'],
+                        ]);
+                    }
+                }
+            } else {
+                foreach ($cart as $item) {
+                    OrderItem::create([
+                        'company_id'   => $order->company_id,
+                        'order_id'     => $order->id,
+                        'product_id'   => $item['id'],
+                        'product_name' => $item['name'],
+                        'unit_price'   => $item['price'],
+                        'quantity'     => $item['qty'],
+                        'subtotal'     => $item['price'] * $item['qty'],
                     ]);
                 }
+            }
+
+            // KOT System Integration: Check if KOT/Kitchen system is enabled for company
+            $company = Company::find(session('company_id'));
+            $isKOTEnabled = $company && (
+                $company->isModuleEnabled('kitchen_display') || 
+                $company->isModuleEnabled('kot_system') || 
+                $company->isModuleEnabled('restaurant_mode')
+            );
+
+            if ($isKOTEnabled && $order->items()->count() > 0) {
+                app(\App\Services\KOTService::class)->generateTickets($order);
+            }
+
+            // Update table status and order payment status based on Dine-In lifecycle
+            $tableIdToRelease = $order->table_id ?: $request->table_id;
+            if ($tableIdToRelease && $resolvedServiceType === 'dine_in') {
+                $tableModel = RestaurantTable::find($tableIdToRelease);
+                if ($tableModel) {
+                    $tableModel->update([
+                        'status'         => 'occupied',
+                        'customer_name'  => $request->customer_name ?: ($customer->name ?? null),
+                        'customer_phone' => $request->customer_phone ?: ($customer->phone ?? null),
+                    ]);
+                }
+            }
+
+            if ($request->is_settlement || $request->settle_payment || !empty($request->payment_details) || !empty($request->split_payments)) {
+                $order->update([
+                    'status' => 'paid',
+                ]);
             }
 
             // Wallet Transactions
@@ -541,6 +939,16 @@ class POSController extends Controller
                     'amount'      => $walletUsed,
                     'type'        => 'debit',
                     'description' => 'Applied to Order #' . $order->id,
+                ]);
+            } elseif ($walletUsed < 0) {
+                $debtPaid = abs($walletUsed);
+                $customer->increment('wallet_balance', $debtPaid);
+                WalletTransaction::create([
+                    'customer_id' => $customer->id,
+                    'order_id'    => $order->id,
+                    'amount'      => $debtPaid,
+                    'type'        => 'credit',
+                    'description' => 'Paid off previous debt with Order #' . $order->id,
                 ]);
             }
 
@@ -630,9 +1038,11 @@ class POSController extends Controller
             DB::commit();
 
             return response()->json([
-                'success'  => true,
-                'order_id' => '#' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
-                'total'    => $request->total,
+                'success'      => true,
+                'order_db_id'  => $order->id,
+                'order_number' => $order->order_number,
+                'order_id'     => '#' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
+                'total'        => $request->total,
                 'customer' => [
                     'name' => $customer->name,
                     'wallet_balance' => $customer->wallet_balance

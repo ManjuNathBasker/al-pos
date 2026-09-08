@@ -7,10 +7,11 @@ use App\Models\Account;
 
 class Company extends Model
 {
-    protected $fillable = ['name', 'email', 'phone', 'address', 'owner_id', 'business_type', 'settings'];
+    protected $fillable = ['name', 'email', 'phone', 'address', 'owner_id', 'business_type', 'is_active', 'settings'];
 
     protected $casts = [
-        'settings' => 'array',
+        'is_active' => 'boolean',
+        'settings'  => 'array',
     ];
 
     /**
@@ -70,5 +71,93 @@ class Company extends Model
     public function isModuleEnabled(string $moduleKey): bool
     {
         return $this->moduleSettings()->where('module_key', $moduleKey)->where('is_enabled', true)->exists();
+    }
+
+    /**
+     * Get the card commission tax percentage from company settings.
+     * Returns 0.0 if not configured.
+     */
+    public function getCardCommissionTax(): float
+    {
+        $settings = $this->settings ?? [];
+        return (float) ($settings['card_commission_tax'] ?? 0);
+    }
+
+    /**
+     * Get the tax percentage from company settings.
+     * Checks tax_percentage, tax_rate, or falls back to card_commission_tax / 8.0.
+     */
+    public function getTaxPercentage(): float
+    {
+        $settings = $this->settings ?? [];
+        if (isset($settings['tax_percentage'])) {
+            return (float) $settings['tax_percentage'];
+        }
+        if (isset($settings['tax_rate'])) {
+            return (float) $settings['tax_rate'];
+        }
+        // If tax_percentage isn't explicitly set, fallback to card_commission_tax if available
+        if (isset($settings['card_commission_tax']) && $settings['card_commission_tax'] > 0) {
+            return (float) $settings['card_commission_tax'];
+        }
+        return 8.0;
+    }
+
+
+    /**
+     * Get the company's currency configuration.
+     */
+    public function getCurrencyConfig(): array
+    {
+        $settings = $this->settings ?? [];
+        $currency = $settings['currency'] ?? [];
+
+        return [
+            'name'            => $currency['name'] ?? 'Indian Rupee',
+            'code'            => $currency['code'] ?? 'INR',
+            'symbol'          => $currency['symbol'] ?? '₹',
+            'decimal_places'  => (int) ($currency['decimal_places'] ?? 2),
+            'symbol_position' => $currency['symbol_position'] ?? 'before',
+        ];
+    }
+
+    /**
+     * Get currency symbol.
+     */
+    public function getCurrencySymbol(): string
+    {
+        return $this->getCurrencyConfig()['symbol'];
+    }
+
+    /**
+     * Get currency code.
+     */
+    public function getCurrencyCode(): string
+    {
+        return $this->getCurrencyConfig()['code'];
+    }
+
+    /**
+     * Get currency decimal places.
+     */
+    public function getCurrencyDecimalPlaces(): int
+    {
+        return (int) $this->getCurrencyConfig()['decimal_places'];
+    }
+
+    /**
+     * Get currency symbol position ('before' | 'after').
+     */
+    public function getCurrencySymbolPosition(): string
+    {
+        return $this->getCurrencyConfig()['symbol_position'];
+    }
+
+    /**
+     * Format a monetary amount using this company's currency rules.
+     */
+    public function formatCurrency(mixed $amount, ?int $decimals = null): string
+    {
+        return format_currency($amount, $this, $decimals);
     }
 }

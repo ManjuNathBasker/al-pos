@@ -42,6 +42,21 @@ class Order extends Model
         'kitchen_status',
         'waiter_id',
         'is_stock_deducted',
+        // Card commission fields
+        'card_type_id',
+        'card_commission_amount',
+        'card_commission_tax_amount',
+        'card_commission_total_deduction',
+        'card_net_received',
+        // Delivery partner fields
+        'delivery_partner_id',
+        'delivery_commission_amount',
+        'settlement_status',
+        // Currency snapshot fields
+        'currency_code',
+        'currency_symbol',
+        'currency_symbol_position',
+        'currency_decimal_places',
     ];
 
     protected $casts = [
@@ -58,9 +73,15 @@ class Order extends Model
         'wallet_used'     => 'float',
         'change_returned' => 'float',
         'total_paid'      => 'float',
+        // Card commission casts
+        'card_commission_amount'           => 'float',
+        'card_commission_tax_amount'       => 'float',
+        'card_commission_total_deduction'  => 'float',
+        'card_net_received'                => 'float',
+        'currency_decimal_places'          => 'integer',
     ];
 
-    // ── Boot: auto-generate order number ───────────────────────────
+    // ── Boot: auto-generate order number & currency snapshot ───────
     protected static function boot(): void
     {
         parent::boot();
@@ -72,10 +93,26 @@ class Order extends Model
                     5, '0', STR_PAD_LEFT
                 );
             }
+
+            if (empty($order->currency_code) && empty($order->currency_symbol)) {
+                $currencyConfig = $order->company_id 
+                    ? currency_config(Company::find($order->company_id))
+                    : current_currency_config();
+
+                $order->currency_code = $currencyConfig['code'];
+                $order->currency_symbol = $currencyConfig['symbol'];
+                $order->currency_symbol_position = $currencyConfig['symbol_position'];
+                $order->currency_decimal_places = $currencyConfig['decimal_places'];
+            }
         });
     }
 
     // ── Relationships ────────────────────────────────────────────────
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -119,6 +156,94 @@ class Order extends Model
     public function cardTransactions()
     {
         return $this->hasMany(CardTransaction::class);
+    }
+
+    public function cardType()
+    {
+        return $this->belongsTo(CardType::class);
+    }
+
+    public function walletTransactions()
+    {
+        return $this->hasMany(WalletTransaction::class);
+    }
+
+    public function deliveryPartner()
+    {
+        return $this->belongsTo(DeliveryPartner::class);
+    }
+
+    // ── Currency Helpers ──────────────────────────────────────────────
+    public function getCurrencyConfig(): array
+    {
+        return currency_config($this);
+    }
+
+    public function getCurrencySymbol(): string
+    {
+        return currency_symbol($this);
+    }
+
+    public function formatCurrency(mixed $amount, ?int $decimals = null): string
+    {
+        return format_currency($amount, $this, $decimals);
+    }
+
+    // ── Payment Status & Recalculation Helpers ───────────────────────
+    public function isUnpaid(): bool
+    {
+        if (in_array($this->status, ['paid', 'completed', 'closed', 'refunded', 'cancelled'])) {
+            return false;
+        }
+        if ($this->payment_status === 'paid') {
+            return false;
+        }
+        return true;
+    }
+
+    public function isPaid(): bool
+    {
+        return !$this->isUnpaid();
+    }
+
+    public function recalculateTotals(): void
+    {
+        $subtotal = (float) $this->items()->sum(\Illuminate\Support\Facades\DB::raw('unit_price * quantity'));
+
+        $manualDiscount = 0;
+        if ($this->discount_type === 'percent') {
+            $manualDiscount = $subtotal * (($this->discount_value ?? 0) / 100);
+        } else {
+            $manualDiscount = (float) ($this->discount_value ?? 0);
+        }
+
+        $couponDiscount = 0;
+        if ($this->coupon_id) {
+            $coupon = $this->coupon ?? Coupon::find($this->coupon_id);
+            if ($coupon) {
+                if ($coupon->type === 'percent') {
+                    $couponDiscount = $subtotal * ($coupon->value / 100);
+                } else {
+                    $couponDiscount = $coupon->value;
+                }
+            }
+        }
+
+        $totalDiscountAmount = min($subtotal, $manualDiscount + $couponDiscount);
+        $taxableAmount = max(0, $subtotal - $totalDiscountAmount);
+
+        $company = $this->company ?? Company::find($this->company_id);
+        $companyTaxPct = $company ? ($company->getTaxPercentage() / 100) : 0.08;
+        $taxAmount = $taxableAmount * $companyTaxPct;
+
+        $totalAmount = max(0, $subtotal - $totalDiscountAmount + $taxAmount);
+
+        $this->update([
+            'subtotal'        => round($subtotal, 2),
+            'discount_amount' => round($totalDiscountAmount, 2),
+            'tax_amount'      => round($taxAmount, 2),
+            'total_amount'    => round($totalAmount, 2),
+        ]);
     }
 
     // ── Scopes ───────────────────────────────────────────────────────

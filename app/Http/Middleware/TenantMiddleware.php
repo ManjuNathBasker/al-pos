@@ -76,6 +76,7 @@ class TenantMiddleware
                 $user->unsetRelation('permissions');
 
                 view()->share('currentCompany', $currentCompany);
+                view()->share('currencyConfig', $currentCompany->getCurrencyConfig());
 
                 // Share user's companies for the switcher (using simple query)
                 $userCompanies = $user->isAdmin() 

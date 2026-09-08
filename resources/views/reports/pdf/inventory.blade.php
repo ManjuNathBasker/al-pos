@@ -12,7 +12,7 @@
         </tr>
         <tr>
             <td></td>
-            <td class="text-right"><strong>Total Value:</strong> ${{ number_format(collect($inventory)->sum(fn($i) => $i->current_stock * $i->cost_price), 2) }}</td>
+            <td class="text-right"><strong>Total Value:</strong> @currency(collect($inventory)->sum(fn($i) => $i->current_stock * $i->cost_price))</td>
         </tr>
     </table>
 </div>
@@ -33,8 +33,8 @@
             <td>{{ $item->name }}</td>
             <td>{{ $item->code }}</td>
             <td class="text-right">{{ $item->current_stock }} {{ $item->unit_type }}</td>
-            <td class="text-right">${{ number_format($item->cost_price, 2) }}</td>
-            <td class="text-right">${{ number_format($item->current_stock * $item->cost_price, 2) }}</td>
+            <td class="text-right">@currency($item->cost_price)</td>
+            <td class="text-right">@currency($item->current_stock * $item->cost_price)</td>
         </tr>
         @empty
         <tr>

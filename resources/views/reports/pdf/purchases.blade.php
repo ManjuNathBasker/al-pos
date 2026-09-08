@@ -12,7 +12,7 @@
         </tr>
         <tr>
             <td></td>
-            <td class="text-right"><strong>Total Amount:</strong> ${{ number_format(collect($purchases)->sum('total_amount'), 2) }}</td>
+            <td class="text-right"><strong>Total Amount:</strong> @currency(collect($purchases)->sum('total_amount'))</td>
         </tr>
     </table>
 </div>
@@ -36,7 +36,7 @@
             <td>{{ $purchase->supplier->name ?? 'N/A' }}</td>
             <td>{{ ucfirst($purchase->status) }}</td>
             <td>{{ ucfirst($purchase->payment_status) }}</td>
-            <td class="text-right">${{ number_format($purchase->total_amount, 2) }}</td>
+            <td class="text-right">@currency($purchase->total_amount, $purchase)</td>
         </tr>
         @empty
         <tr>

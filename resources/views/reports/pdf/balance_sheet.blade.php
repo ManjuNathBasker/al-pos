@@ -24,7 +24,7 @@
         @forelse($report['assets'] as $item)
         <tr>
             <td>{{ $item['name'] }}</td>
-            <td class="text-right">${{ number_format($item['amount'], 2) }}</td>
+            <td class="text-right">@currency($item['amount'])</td>
         </tr>
         @empty
         <tr>
@@ -35,7 +35,7 @@
     <tfoot>
         <tr>
             <th>Total Assets</th>
-            <th class="text-right">${{ number_format($report['total_assets'], 2) }}</th>
+            <th class="text-right">@currency($report['total_assets'])</th>
         </tr>
     </tfoot>
 </table>
@@ -52,7 +52,7 @@
         @forelse($report['liabilities'] as $item)
         <tr>
             <td>{{ $item['name'] }}</td>
-            <td class="text-right">${{ number_format($item['amount'], 2) }}</td>
+            <td class="text-right">@currency($item['amount'])</td>
         </tr>
         @empty
         <tr>
@@ -63,7 +63,7 @@
     <tfoot>
         <tr>
             <th>Total Liabilities</th>
-            <th class="text-right">${{ number_format($report['total_liabilities'], 2) }}</th>
+            <th class="text-right">@currency($report['total_liabilities'])</th>
         </tr>
     </tfoot>
 </table>
@@ -80,7 +80,7 @@
         @forelse($report['equity'] as $item)
         <tr>
             <td>{{ $item['name'] }}</td>
-            <td class="text-right">${{ number_format($item['amount'], 2) }}</td>
+            <td class="text-right">@currency($item['amount'])</td>
         </tr>
         @empty
         <tr>
@@ -91,7 +91,7 @@
     <tfoot>
         <tr>
             <th>Total Equity</th>
-            <th class="text-right">${{ number_format($report['total_equity'], 2) }}</th>
+            <th class="text-right">@currency($report['total_equity'])</th>
         </tr>
     </tfoot>
 </table>
@@ -99,7 +99,7 @@
 <table class="data-table">
     <tr>
         <th style="font-size: 16px;">TOTAL LIABILITIES & EQUITY</th>
-        <th class="text-right" style="font-size: 16px;">${{ number_format($report['total_liabilities'] + $report['total_equity'], 2) }}</th>
+        <th class="text-right" style="font-size: 16px;">@currency($report['total_liabilities'] + $report['total_equity'])</th>
     </tr>
 </table>
 @endsection

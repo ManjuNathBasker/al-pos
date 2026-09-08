@@ -22,14 +22,16 @@ class Account extends Model
         'status',
         'is_system',
         'show_in_pos',
+        'is_card_account',
     ];
 
     protected $casts = [
         'opening_balance' => 'float',
         'current_balance' => 'float',
-        'status' => 'boolean',
-        'is_system' => 'boolean',
-        'show_in_pos' => 'boolean',
+        'status'          => 'boolean',
+        'is_system'       => 'boolean',
+        'show_in_pos'     => 'boolean',
+        'is_card_account' => 'boolean',
     ];
 
     public function parent()

@@ -28,6 +28,7 @@ class RoleSeeder extends Seeder
             'inventory' => ['view inventory', 'create inventory', 'edit inventory', 'delete inventory', 'manage recipes'],
             'reports' => ['view reports'],
             'settings' => ['manage settings'],
+            'restaurant' => ['access table map', 'access kitchen kds', 'access waiter panel', 'manage table settings'],
         ];
 
         foreach ($permissions as $module => $modulePermissions) {

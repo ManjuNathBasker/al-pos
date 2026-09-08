@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\CardType;
+use App\Models\Company;
 use App\Models\Expense;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryItem;
@@ -59,12 +61,21 @@ class AccountingService
             foreach ($order->payments as $payment) {
                 if ($payment->payment_method === 'wallet') {
                     $walletAccount = $this->getSystemAccount($companyId, 'Customer Wallet', 'Liability', '2200');
-                    JournalEntryItem::create([
-                        'journal_entry_id' => $journal->id,
-                        'account_id' => $walletAccount->id,
-                        'debit_amount' => $payment->amount,
-                        'credit_amount' => 0,
-                    ]);
+                    if ($payment->amount > 0) {
+                        JournalEntryItem::create([
+                            'journal_entry_id' => $journal->id,
+                            'account_id' => $walletAccount->id,
+                            'debit_amount' => $payment->amount,
+                            'credit_amount' => 0,
+                        ]);
+                    } else if ($payment->amount < 0) {
+                        JournalEntryItem::create([
+                            'journal_entry_id' => $journal->id,
+                            'account_id' => $walletAccount->id,
+                            'debit_amount' => 0,
+                            'credit_amount' => abs($payment->amount),
+                        ]);
+                    }
                 } else if (is_numeric($payment->payment_method)) {
                     $account = Account::find($payment->payment_method);
                     if ($account) {
@@ -200,6 +211,102 @@ class AccountingService
                 ]);
             }
         });
+
+        // ── Card Commission Auto Write-Off ──────────────────────────────
+        // Load fresh so card_type relationship is available after transaction.
+        $order->refresh();
+        if ($order->card_type_id && $order->card_commission_total_deduction > 0) {
+            $cardType = $order->cardType;
+            if ($cardType && $cardType->isAutoWriteOff()) {
+                $this->recordCardCommissionWriteOff($order, $cardType);
+            }
+        }
+    }
+
+    /**
+     * Record the card commission write-off journal entry.
+     *
+     * Journal:
+     *   Dr  Bank/Card Account         (net amount received)
+     *   Dr  Card Processing Charges   (commission amount)
+     *   Dr  Card Commission Tax       (tax on commission)
+     *   Cr  Sales                     (full bill amount)
+     */
+    public function recordCardCommissionWriteOff(Order $order, \App\Models\CardType $cardType): void
+    {
+        DB::transaction(function () use ($order, $cardType) {
+            $companyId = $order->company_id;
+
+            $journal = JournalEntry::create([
+                'company_id'       => $companyId,
+                'transaction_date' => $order->created_at->toDateString(),
+                'reference_type'   => Order::class,
+                'reference_id'     => $order->id,
+                'notes'            => 'Card Commission Write-Off — ' . $order->order_number,
+                'created_by'       => $order->created_by ?? auth()->id(),
+            ]);
+
+            $totalDeduction = round($order->card_commission_amount + $order->card_commission_tax_amount, 4);
+
+            // ── Credit: Bank / Card Account (total deduction) ──────────────
+            // We need to credit the same account that was debited in recordSale.
+            // Find the card account used in the payments.
+            $cardPaymentAccount = null;
+            if ($order->payments) {
+                foreach ($order->payments as $payment) {
+                    if (is_numeric($payment->payment_method)) {
+                        $acc = Account::find($payment->payment_method);
+                        if ($acc && $acc->is_card_account) {
+                            $cardPaymentAccount = $acc;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!$cardPaymentAccount) {
+                // fallback
+                $cardPaymentAccount = Account::where('company_id', $companyId)
+                                             ->where('is_card_account', true)
+                                             ->first();
+            }
+            if (!$cardPaymentAccount) {
+                $cardPaymentAccount = $this->getSystemAccount($companyId, 'Card / Bank', 'Asset', '1010');
+            }
+
+            JournalEntryItem::create([
+                'journal_entry_id' => $journal->id,
+                'account_id'       => $cardPaymentAccount->id,
+                'debit_amount'     => 0,
+                'credit_amount'    => $totalDeduction,
+            ]);
+
+            // ── Debit: Card Processing Charges (commission) ─────────────
+            if ($order->card_commission_amount > 0) {
+                $commissionAccount = $cardType->expense_account_id
+                    ? Account::find($cardType->expense_account_id)
+                    : null;
+                if (!$commissionAccount) {
+                    $commissionAccount = $this->getSystemAccount($companyId, 'Card Processing Charges', 'Expense', '5150');
+                }
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id'       => $commissionAccount->id,
+                    'debit_amount'     => round($order->card_commission_amount, 4),
+                    'credit_amount'    => 0,
+                ]);
+            }
+
+            // ── Debit: Card Commission Tax ──────────────────────────────
+            if ($order->card_commission_tax_amount > 0) {
+                $commissionTaxAccount = $this->getSystemAccount($companyId, 'Card Commission Tax', 'Expense', '5160');
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id'       => $commissionTaxAccount->id,
+                    'debit_amount'     => round($order->card_commission_tax_amount, 4),
+                    'credit_amount'    => 0,
+                ]);
+            }
+        });
     }
 
     /**
@@ -324,6 +431,59 @@ class AccountingService
                 'debit_amount' => 0,
                 'credit_amount' => $expense->amount,
             ]);
+        });
+    }
+    /**
+     * Record a manual adjustment to a customer's wallet.
+     * Credits to the wallet increase liability (Wallet Liability Account).
+     * Debits from the wallet decrease liability.
+     */
+    public function recordManualWalletAdjustment(\App\Models\Customer $customer, $amount, $type, $description)
+    {
+        $companyId = $customer->company_id;
+        
+        $walletLiabilityAccount = $this->getSystemAccount($companyId, 'Wallet Liability', 'Liability');
+        $offsetAccount = $this->getSystemAccount($companyId, 'Cash', 'Asset', '1000'); 
+
+        DB::transaction(function () use ($companyId, $customer, $amount, $type, $description, $walletLiabilityAccount, $offsetAccount) {
+            $journal = JournalEntry::create([
+                'company_id' => $companyId,
+                'transaction_date' => now()->toDateString(),
+                'reference_type' => \App\Models\Customer::class,
+                'reference_id' => $customer->id,
+                'notes' => "Manual Wallet {$type} for {$customer->name}" . ($description ? ": $description" : ""),
+                'created_by' => auth()->id(),
+            ]);
+
+            if ($type === 'credit') {
+                // We got money (Cash Debit), and our Liability increased (Wallet Credit)
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $offsetAccount->id,
+                    'debit_amount' => $amount,
+                    'credit_amount' => 0,
+                ]);
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $walletLiabilityAccount->id,
+                    'debit_amount' => 0,
+                    'credit_amount' => $amount,
+                ]);
+            } else {
+                // We deducted money (Wallet Debit - Liability decreases), offset by Cash Credit (We paid them back)
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $walletLiabilityAccount->id,
+                    'debit_amount' => $amount,
+                    'credit_amount' => 0,
+                ]);
+                JournalEntryItem::create([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $offsetAccount->id,
+                    'debit_amount' => 0,
+                    'credit_amount' => $amount,
+                ]);
+            }
         });
     }
 }

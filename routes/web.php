@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ManualController;
 use App\Http\Controllers\POSController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\PurchasePaymentController;
 use App\Http\Controllers\PurchaseReportController;
 use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\InventoryReportController;
+use App\Http\Controllers\WalletReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -67,8 +69,11 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/pos/cart/remove', [POSController::class, 'cartRemove'])->name('pos.cart.remove');
         Route::post('/pos/cart/clear', [POSController::class, 'cartClear'])->name('pos.cart.clear');
         Route::get('/pos/active-tables', [POSController::class, 'activeTables'])->name('pos.active-tables');
+        Route::get('/pos/active-orders', [POSController::class, 'activeOrders'])->name('pos.active-orders');
+        Route::post('/pos/save-table-order', [POSController::class, 'saveTableOrder'])->name('pos.save-table-order');
         Route::post('/pos/load-order', [POSController::class, 'loadOrder'])->name('pos.load-order');
         Route::post('/pos/checkout', [POSController::class, 'checkout'])->name('pos.checkout');
+        Route::post('/pos/complete-table-order/{table}', [POSController::class, 'completeTableOrder'])->name('pos.complete-table-order');
 
         // Register Sessions (Shift Management)
         Route::post('/register-sessions/open', [\App\Http\Controllers\RegisterSessionController::class, 'store'])->name('register-sessions.open');
@@ -83,8 +88,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Administrative Resource Routes
     Route::resource('products', ProductController::class)->middleware('can:view products');
     Route::resource('categories', CategoryController::class)->middleware('can:view products'); // Grouped under products
+    Route::post('/customers/{customer}/wallet/adjust', [CustomerController::class, 'adjustWallet'])->name('customers.wallet.adjust');
     Route::resource('customers', CustomerController::class)->middleware('can:view customers');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'cancelItem'])->name('orders.items.cancel');
     Route::resource('orders', OrderController::class)->middleware('can:view orders');
     Route::resource('coupons', CouponController::class)->middleware('can:view coupons');
     Route::get('/register-sessions', [\App\Http\Controllers\RegisterSessionController::class, 'index'])->name('register-sessions.index');
@@ -92,6 +99,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Restaurant Specific Routes
     Route::middleware('module:table_management')->group(function () {
         Route::get('/tables/map', [TableController::class, 'map'])->name('tables.map');
+        Route::post('/tables/{table}/status', [TableController::class, 'updateStatus'])->name('tables.status');
         Route::resource('tables', TableController::class);
         Route::resource('sections', SectionController::class);
     });
@@ -109,7 +117,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/waiter/order/{table}', [WaiterController::class, 'createOrder'])->name('waiter.order');
         Route::post('/waiter/order/{table}', [WaiterController::class, 'storeOrder'])->name('waiter.order.store');
         Route::get('/waiter/order/{table}/status', [WaiterController::class, 'getStatus'])->name('waiter.order.status');
+        Route::post('/waiter/order/{table}/complete', [WaiterController::class, 'completeOrder'])->name('waiter.order.complete');
         Route::delete('/waiter/order/{table}/item/{item}', [WaiterController::class, 'removeItem'])->name('waiter.order.remove-item');
+        Route::post('/waiter/order/{table}/item/{item}/quantity', [WaiterController::class, 'updateItemQuantity'])->name('waiter.order.update-quantity');
         Route::post('/waiter/order/{table}/cancel', [WaiterController::class, 'cancelOrder'])->name('waiter.order.cancel');
     });
 
@@ -136,6 +146,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/reports/inventory-report/export', [InventoryReportController::class, 'export'])->name('reports.inventory.export');
     Route::get('/reports/purchases', [PurchaseReportController::class, 'index'])->name('reports.purchases');
     Route::get('/reports/purchases/export', [PurchaseReportController::class, 'export'])->name('reports.purchases.export');
+    Route::get('/reports/wallet', [WalletReportController::class, 'index'])->name('reports.wallet');
 
     // Accounting & Financial Management Routes
     Route::resource('accounts', App\Http\Controllers\AccountController::class);
@@ -154,6 +165,22 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/api/cards', [App\Http\Controllers\CardController::class, 'getActiveCards']);
     Route::post('/api/pos/resolve-offers', [App\Http\Controllers\BankOfferController::class, 'resolveOffers']);
     Route::get('/reports/cards', [App\Http\Controllers\CardReportController::class, 'index'])->name('reports.cards');
+
+    // Card Types Master (new — commission configuration for POS)
+    Route::resource('card-types', App\Http\Controllers\CardTypeController::class);
+    Route::get('/api/card-types', [App\Http\Controllers\CardTypeController::class, 'getActive'])->name('card-types.active');
+    
+    // Delivery Partners
+    Route::resource('delivery-partners', App\Http\Controllers\DeliveryPartnerController::class);
+    Route::get('/api/delivery-partners', [App\Http\Controllers\DeliveryPartnerController::class, 'getActive'])->name('delivery-partners.active');
+    Route::get('/delivery-partners/{delivery_partner}/settlements', [App\Http\Controllers\DeliveryPartnerController::class, 'settlements'])->name('delivery-partners.settlements');
+    Route::post('/delivery-partners/orders/{order}/settle', [App\Http\Controllers\DeliveryPartnerController::class, 'markSettled'])->name('delivery-partners.mark-settled');
+    Route::get('/reports/card-commission', [App\Http\Controllers\CardCommissionReportController::class, 'index'])->name('reports.card-commission');
 });
+
+// User Manual (accessible to all authenticated users)
+Route::get('/user-manual', [ManualController::class, 'index'])
+    ->middleware(['auth', 'tenant'])
+    ->name('manual.index');
 
 require __DIR__.'/auth.php';

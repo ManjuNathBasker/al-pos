@@ -16,7 +16,14 @@ class RestaurantTable extends Model
         'capacity',
         'status',
         'qr_token',
+        'customer_name',
+        'customer_phone',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     public function section()
     {
@@ -26,6 +33,7 @@ class RestaurantTable extends Model
     public function activeOrder()
     {
         return $this->hasOne(Order::class, 'table_id')
-            ->whereIn('status', ['pending', 'processing']);
+            ->whereNotIn('status', ['closed', 'completed', 'cancelled'])
+            ->latestOfMany();
     }
 }
