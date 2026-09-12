@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
+    @vite('resources/js/qz-tray.js')
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="csrf-token" content="{{ csrf_token() }}" />
@@ -2470,11 +2471,22 @@ function posApp() {
 
         handleOrderCompleted() { this.showOrderCompleted=false; },
 
-        printBill() {
-            const win = window.open('','_blank','width=400,height=600');
+        async printBill() {
             const html = document.getElementById('receipt-container').innerHTML;
-            win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt</title><style>body{margin:0;padding:10px;font-family:'Courier New',monospace;font-size:12px;background:#fff;color:#000;}table{width:100%;border-collapse:collapse;}th,td{padding:4px 2px;}.receipt-container{width:100%;max-width:300px;margin:0 auto;}</style></head><body><div class="receipt-container">${html}</div><script>window.onload=function(){window.print();setTimeout(()=>window.close(),500);}<\/script></body></html>`);
-            win.document.close();
+            const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt</title><style>body{margin:0;padding:10px;font-family:'Courier New',monospace;font-size:12px;background:#fff;color:#000;}table{width:100%;border-collapse:collapse;}th,td{padding:4px 2px;}.receipt-container{width:100%;max-width:300px;margin:0 auto;}</style></head><body><div class="receipt-container">${html}</div></body></html>`;
+
+            if (!window.QZTray) {
+                this.showToast('QZ Tray library is not loaded', 'error');
+                return;
+            }
+
+            try {
+                await window.QZTray.printHTML(fullHtml);
+                this.showToast('Receipt sent to printer');
+            } catch (err) {
+                console.error('[POS] Print bill error:', err);
+                this.showToast('Print failed: ' + (err.message || err), 'error');
+            }
         },
 
         shareOnWhatsApp() {
@@ -2546,8 +2558,7 @@ function posApp() {
     };
 }
 
-function printKOTSlip(data) {
-    const win = window.open('', '_blank', 'width=400,height=600');
+async function printKOTSlip(data) {
     const itemsHtml = (data.items || []).map(item => `
         <tr style="border-bottom: 1px dashed #ccc;">
             <td style="padding: 4px 0; font-size: 14px; font-weight: bold; width: 40px; vertical-align: top;">${item.qty || item.quantity}x</td>
@@ -2606,17 +2617,20 @@ function printKOTSlip(data) {
             *** END OF KOT SLIP ***
         </div>
     </div>
-    <script>
-        window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-        };
-    <\/script>
 </body>
 </html>`;
 
-    win.document.write(html);
-    win.document.close();
+    if (!window.QZTray) {
+        alert('QZ Tray library is not loaded');
+        return;
+    }
+
+    try {
+        await window.QZTray.printHTML(html);
+    } catch(err) {
+        console.error('[POS] Print KOT error:', err);
+        alert('KOT printing failed: ' + (err.message || err));
+    }
 }
 </script>
 </body>
