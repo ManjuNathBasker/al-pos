@@ -1,5 +1,55 @@
 import qz from 'qz-tray';
 
+// --------------------------------------------------------------------------
+// QZ Tray Security & Certificate Signing Setup
+// --------------------------------------------------------------------------
+qz.security.setSignatureAlgorithm('SHA512');
+
+qz.security.setCertificatePromise(function(resolve, reject) {
+    fetch('/qz/certificate', { cache: 'no-store' })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Certificate endpoint returned HTTP ' + response.status);
+            }
+            return response.text();
+        })
+        .then(resolve)
+        .catch(function(error) {
+            console.error('[QZ Tray Error] Failed to load digital certificate:', error);
+            reject(error);
+        });
+});
+
+qz.security.setSignaturePromise(function(toSign) {
+    return function(resolve, reject) {
+        const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : '';
+
+        fetch('/qz/sign', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'text/plain'
+            },
+            body: JSON.stringify({ request: toSign })
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.text().then(function(errText) {
+                    throw new Error('Signing endpoint error (HTTP ' + response.status + '): ' + errText);
+                });
+            }
+            return response.text();
+        })
+        .then(resolve)
+        .catch(function(error) {
+            console.error('[QZ Tray Error] Failed to generate RSA-SHA512 signature:', error);
+            reject(error);
+        });
+    };
+});
+
 const QZTray = {
     async connect() {
         if (qz.websocket.isActive()) {
@@ -8,7 +58,7 @@ const QZTray = {
 
         try {
             await qz.websocket.connect();
-            console.log('[QZ Tray] Connected');
+            console.log('[QZ Tray] Connected securely');
             return true;
         } catch (error) {
             console.error('[QZ Tray] Connection failed:', error);

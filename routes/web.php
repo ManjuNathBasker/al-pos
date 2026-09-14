@@ -24,6 +24,7 @@ use App\Http\Controllers\PurchaseReportController;
 use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\InventoryReportController;
 use App\Http\Controllers\WalletReportController;
+use App\Http\Controllers\QZSignController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -83,6 +84,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/cash-transactions/expense', [\App\Http\Controllers\CashTransactionController::class, 'addExpense'])->name('cash-transactions.expense');
         Route::post('/cash-transactions/withdrawal', [\App\Http\Controllers\CashTransactionController::class, 'ownerWithdrawal'])->name('cash-transactions.withdrawal');
         Route::post('/cash-transactions/deposit', [\App\Http\Controllers\CashTransactionController::class, 'cashDeposit'])->name('cash-transactions.deposit');
+
+        // QZ Tray Security & Signing Routes
+        Route::get('/qz/certificate', [QZSignController::class, 'getCertificate'])->name('qz.certificate');
+        Route::post('/qz/sign', [QZSignController::class, 'sign'])->name('qz.sign');
     });
 
     // Administrative Resource Routes
