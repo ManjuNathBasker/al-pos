@@ -2100,6 +2100,14 @@ function posApp() {
             await this.fetchCards();
             await this.fetchActiveOrders();
             setInterval(() => { this.fetchActiveOrders(); }, 5000);
+
+            if (window.QZTray) {
+                window.QZTray.init().catch(e => console.warn('[POS] Background QZ Tray init warning:', e));
+            } else {
+                window.addEventListener('load', () => {
+                    if (window.QZTray) window.QZTray.init().catch(e => console.warn('[POS] Background QZ Tray init warning:', e));
+                });
+            }
         },
 
         async fetchCards() {
