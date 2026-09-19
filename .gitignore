@@ -9,6 +9,9 @@
 /public/storage
 
 /storage/*.key
+/storage/app/private/qz/*
+/storage/app/qz/*
+*.pem
 /storage/logs/*
 /storage/framework/cache/*
 /storage/framework/sessions/*

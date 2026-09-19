@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
-    @vite('resources/js/qz-tray.js')
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="csrf-token" content="{{ csrf_token() }}" />
@@ -402,9 +401,35 @@
 
         /* ── Thermal Receipt Styles ── */
         @media print {
-            body { background: #FFFFFF !important; }
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+            html, body {
+                width: 80mm !important;
+                max-width: 80mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .thermal-receipt, .receipt-container {
+                width: 72mm !important;
+                max-width: 72mm !important;
+                margin: 0 auto !important;
+                padding: 2mm !important;
+                box-sizing: border-box !important;
+                font-family: 'Courier New', Courier, monospace !important;
+                font-size: 12px !important;
+                line-height: 1.2 !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            table, div, p {
+                max-width: 100% !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            * { box-sizing: border-box; }
             .no-print { display: none !important; }
-            .receipt-container { page-break-after: always; margin: 0; padding: 0; }
         }
         .receipt-container {
             width: 80mm;
@@ -2100,14 +2125,6 @@ function posApp() {
             await this.fetchCards();
             await this.fetchActiveOrders();
             setInterval(() => { this.fetchActiveOrders(); }, 5000);
-
-            if (window.QZTray) {
-                window.QZTray.init().catch(e => console.warn('[POS] Background QZ Tray init warning:', e));
-            } else {
-                window.addEventListener('load', () => {
-                    if (window.QZTray) window.QZTray.init().catch(e => console.warn('[POS] Background QZ Tray init warning:', e));
-                });
-            }
         },
 
         async fetchCards() {
@@ -2479,22 +2496,12 @@ function posApp() {
 
         handleOrderCompleted() { this.showOrderCompleted=false; },
 
-        async printBill() {
+        printBill() {
             const html = document.getElementById('receipt-container').innerHTML;
-            const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt</title><style>body{margin:0;padding:10px;font-family:'Courier New',monospace;font-size:12px;background:#fff;color:#000;}table{width:100%;border-collapse:collapse;}th,td{padding:4px 2px;}.receipt-container{width:100%;max-width:300px;margin:0 auto;}</style></head><body><div class="receipt-container">${html}</div></body></html>`;
+            const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt</title><style>@media print{@page{size:80mm auto;margin:0;}html,body{width:80mm !important;max-width:80mm !important;margin:0 !important;padding:0 !important;}.thermal-receipt,.receipt-container{width:72mm !important;max-width:72mm !important;margin:0 auto !important;padding:2mm !important;box-sizing:border-box !important;font-family:'Courier New',Courier,monospace !important;font-size:12px !important;line-height:1.2 !important;overflow-wrap:break-word !important;word-wrap:break-word !important;}table,div,p{max-width:100% !important;overflow-wrap:break-word !important;word-wrap:break-word !important;}*{box-sizing:border-box;}}body{margin:0;padding:0;font-family:'Courier New',monospace;font-size:12px;background:#fff;color:#000;}table{width:100%;border-collapse:collapse;}th,td{padding:4px 2px;}.receipt-container{width:72mm;max-width:72mm;margin:0 auto;padding:2mm;box-sizing:border-box;}</style></head><body><div class="receipt-container">${html}</div></body></html>`;
 
-            if (!window.QZTray) {
-                this.showToast('QZ Tray library is not loaded', 'error');
-                return;
-            }
-
-            try {
-                await window.QZTray.printHTML(fullHtml);
-                this.showToast('Receipt sent to printer');
-            } catch (err) {
-                console.error('[POS] Print bill error:', err);
-                this.showToast('Print failed: ' + (err.message || err), 'error');
-            }
+            silentPrintHTML(fullHtml);
+            this.showToast('Receipt sent to printer');
         },
 
         shareOnWhatsApp() {
@@ -2566,7 +2573,41 @@ function posApp() {
     };
 }
 
-async function printKOTSlip(data) {
+function silentPrintHTML(fullHtml) {
+    let printFrame = document.getElementById('pos-silent-print-frame');
+
+    if (!printFrame) {
+        printFrame = document.createElement('iframe');
+        printFrame.id = 'pos-silent-print-frame';
+
+        printFrame.style.position = 'fixed';
+        printFrame.style.right = '0';
+        printFrame.style.bottom = '0';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = '0';
+        printFrame.style.visibility = 'hidden';
+        printFrame.style.opacity = '0';
+        printFrame.style.pointerEvents = 'none';
+
+        document.body.appendChild(printFrame);
+    }
+
+    const frameDocument =
+        printFrame.contentDocument ||
+        printFrame.contentWindow.document;
+
+    frameDocument.open();
+    frameDocument.write(fullHtml);
+    frameDocument.close();
+
+    printFrame.onload = function () {
+        printFrame.contentWindow.focus();
+        printFrame.contentWindow.print();
+    };
+}
+
+function printKOTSlip(data) {
     const itemsHtml = (data.items || []).map(item => `
         <tr style="border-bottom: 1px dashed #ccc;">
             <td style="padding: 4px 0; font-size: 14px; font-weight: bold; width: 40px; vertical-align: top;">${item.qty || item.quantity}x</td>
@@ -2583,10 +2624,40 @@ async function printKOTSlip(data) {
     <meta charset="UTF-8">
     <title>KOT Print Slip</title>
     <style>
-        body { margin: 0; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; background: #fff; color: #000; }
+        @media print {
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+            html, body {
+                width: 80mm !important;
+                max-width: 80mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .thermal-receipt, .kot-container {
+                width: 72mm !important;
+                max-width: 72mm !important;
+                margin: 0 auto !important;
+                padding: 2mm !important;
+                box-sizing: border-box !important;
+                font-family: 'Courier New', Courier, monospace !important;
+                font-size: 12px !important;
+                line-height: 1.2 !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            table, div, p {
+                max-width: 100% !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            * { box-sizing: border-box; }
+        }
+        body { margin: 0; padding: 0; font-family: 'Courier New', monospace; font-size: 12px; background: #fff; color: #000; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 4px 2px; }
-        .kot-container { width: 100%; max-width: 300px; margin: 0 auto; }
+        .kot-container { width: 72mm; max-width: 72mm; margin: 0 auto; padding: 2mm; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -2628,17 +2699,7 @@ async function printKOTSlip(data) {
 </body>
 </html>`;
 
-    if (!window.QZTray) {
-        alert('QZ Tray library is not loaded');
-        return;
-    }
-
-    try {
-        await window.QZTray.printHTML(html);
-    } catch(err) {
-        console.error('[POS] Print KOT error:', err);
-        alert('KOT printing failed: ' + (err.message || err));
-    }
+    silentPrintHTML(html);
 }
 </script>
 </body>

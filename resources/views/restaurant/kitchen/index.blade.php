@@ -165,8 +165,41 @@
     }
 </style>
 <script>
+    function silentPrintHTML(fullHtml) {
+        let printFrame = document.getElementById('pos-silent-print-frame');
+
+        if (!printFrame) {
+            printFrame = document.createElement('iframe');
+            printFrame.id = 'pos-silent-print-frame';
+
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            printFrame.style.visibility = 'hidden';
+            printFrame.style.opacity = '0';
+            printFrame.style.pointerEvents = 'none';
+
+            document.body.appendChild(printFrame);
+        }
+
+        const frameDocument =
+            printFrame.contentDocument ||
+            printFrame.contentWindow.document;
+
+        frameDocument.open();
+        frameDocument.write(fullHtml);
+        frameDocument.close();
+
+        printFrame.onload = function () {
+            printFrame.contentWindow.focus();
+            printFrame.contentWindow.print();
+        };
+    }
+
     function printKOTSlip(data) {
-        const win = window.open('', '_blank', 'width=400,height=600');
         const itemsHtml = (data.items || []).map(item => `
             <tr style="border-bottom: 1px dashed #ccc;">
                 <td style="padding: 4px 0; font-size: 14px; font-weight: bold; width: 40px; vertical-align: top;">${item.qty || item.quantity}x</td>
@@ -183,10 +216,40 @@
     <meta charset="UTF-8">
     <title>KOT Print Slip</title>
     <style>
-        body { margin: 0; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; background: #fff; color: #000; }
+        @media print {
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+            html, body {
+                width: 80mm !important;
+                max-width: 80mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .thermal-receipt, .kot-container {
+                width: 72mm !important;
+                max-width: 72mm !important;
+                margin: 0 auto !important;
+                padding: 2mm !important;
+                box-sizing: border-box !important;
+                font-family: 'Courier New', Courier, monospace !important;
+                font-size: 12px !important;
+                line-height: 1.2 !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            table, div, p {
+                max-width: 100% !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            * { box-sizing: border-box; }
+        }
+        body { margin: 0; padding: 0; font-family: 'Courier New', monospace; font-size: 12px; background: #fff; color: #000; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 4px 2px; }
-        .kot-container { width: 100%; max-width: 300px; margin: 0 auto; }
+        .kot-container { width: 72mm; max-width: 72mm; margin: 0 auto; padding: 2mm; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -225,17 +288,10 @@
             *** END OF KOT SLIP ***
         </div>
     </div>
-    <script>
-        window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-        };
-    <\/script>
 </body>
 </html>`;
 
-        win.document.write(html);
-        win.document.close();
+        silentPrintHTML(html);
     }
 
     // Auto refresh every 20 seconds to keep KDS up to date

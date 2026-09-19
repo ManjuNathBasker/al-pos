@@ -489,10 +489,36 @@
     </div>
 
     {{-- Thermal Print Receipt Section (Preserved for window.print) --}}
-    <div class="hidden print:block" style="width: 100%; max-width: 320px; font-family: 'Courier New', Courier, monospace; color: #000; font-size: 12px; line-height: 1.4; margin: 0;">
+    <div class="hidden print:block thermal-receipt" style="width: 72mm; max-width: 72mm; margin: 0 auto; font-family: 'Courier New', Courier, monospace; color: #000; font-size: 12px; line-height: 1.2;">
         <style type="text/css" media="print">
-            @page { margin: 0; size: 80mm auto; }
-            body { margin: 0; }
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+            html, body {
+                width: 80mm !important;
+                max-width: 80mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .thermal-receipt {
+                width: 72mm !important;
+                max-width: 72mm !important;
+                margin: 0 auto !important;
+                padding: 2mm !important;
+                box-sizing: border-box !important;
+                font-family: 'Courier New', Courier, monospace !important;
+                font-size: 12px !important;
+                line-height: 1.2 !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            table, div, p {
+                max-width: 100% !important;
+                overflow-wrap: break-word !important;
+                word-wrap: break-word !important;
+            }
+            * { box-sizing: border-box; }
         </style>
         <div style="text-align: center; margin-bottom: 12px;">
             <h2 style="margin: 0; font-size: 18px; font-weight: bold; text-transform: uppercase;">{{ config('app.name', 'POS Store') }}</h2>
